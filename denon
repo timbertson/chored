@@ -45,19 +45,14 @@ here="$PWD"
 tmp="$TMPDIR"
 DENO_ARGS=(--unstable --allow-all)
 
-if [ "$#" -gt 0 ]; then
-	LIKELY_TASK="$1"
-	case "$1" in
-		run)
-			LIKELY_TASK="${2:-}"
-			;;
-	esac
+LOCKFILE="${DENON_TASKS}/.lock.json"
+if [ -e "$LOCKFILE" ]; then
+	DENO_ARGS+=(--lock="$LOCKFILE")
+fi
 
-	LIEKLY_LOCKFILE="${LIKELY_TASK}/${1:-}.lock"
-
-	if [ -e "$LIEKLY_LOCKFILE" ]; then
-		DENO_ARGS+=(--lock="$LIEKLY_LOCKFILE")
-	fi
+if [ "${1:-}" = "exec" ]; then
+	shift
+	exec "$DENO" "$@"
 fi
 
 exec "$DENO" run "${DENO_ARGS[@]}" "${DENON_MAIN:-TODO}" "$@"

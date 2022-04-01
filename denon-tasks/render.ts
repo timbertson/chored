@@ -1,11 +1,8 @@
-import * as Render from '../lib/render/file.ts'
-import { write } from '../lib/render/write.ts'
+import { write, JSONFile, YAMLFile } from '../lib/render/index.ts'
 
-export function main(opts: {}) {
-	const files = [
-		new Render.JSONFile("example/generated.json", { generated: true }),
-		new Render.YAMLFile("example/generated.yaml", { generated: true }),
-	]
-	console.log("FILES: ", files, files.map(f => f.serialize()))
-	write({ files })
+export async function main(_: {}) {
+	return write({ files: [
+		new JSONFile("example/generated.json", { generated: true }),
+		new YAMLFile("example/generated.yaml", { generated: true }),
+	]})
 }

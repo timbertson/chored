@@ -69,12 +69,13 @@ interface RunOpts {
 	[index: string]: Code
 }
 
-const lockPath = (p: string) => p + ".lock"
+const lockPath = (config: DenonConfig) => `${config.taskRoot}/.lock.json`
 
-async function lockModule(config: DenonConfig, path: string): Promise<void> {
+async function lockModules(config: DenonConfig, paths: Array<string>): Promise<void> {
 	// TODO do in parallel, collect output so it doesn't interleave
+	console.log(`Locking ${paths.length} task modules -> ${lockPath(config)}`)
 	const p = Deno.run({ cmd:
-		[ config.denoExe, "cache", "--lock", lockPath(path), "--lock-write", import.meta.url, path ]
+		[ config.denoExe, "cache", "--lock", lockPath(config), "--lock-write", import.meta.url, ...paths ]
 	})
 	let status = await p.status()
 	if(!status.success) {
@@ -82,26 +83,16 @@ async function lockModule(config: DenonConfig, path: string): Promise<void> {
 	}
 }
 
-async function lock(config: DenonConfig, args: Array<string>) {
-	const expandLocal = (f: string) => `${config.taskRoot}/${f}.ts`
-	if (args.length > 0) {
-		for (let mod of args) {
-			let path = expandLocal(mod)
-			console.log(`Locking: ${mod} -> ${lockPath(path)}`)
-			await lockModule(config, path)
-		}
-	} else {
-		const entries: Iterable<Deno.DirEntry> = Deno.readDirSync(config.taskRoot)
-		for (let entry of entries) {
-			let name = entry.name
-			if (name.endsWith(".ts")) {
-				let path = `${config.taskRoot}/${name}`
-				console.log(`Locking: ${name} -> ${lockPath(path)}`)
-				await lockModule(config, path)
-			}
-		}
-	}
+async function lock(config: DenonConfig) {
+	const entries: Iterable<Deno.DirEntry> = Deno.readDirSync(config.taskRoot)
+	const modules = Array.from(entries).map(e => `${config.taskRoot}/${e.name}`).filter(p => p.endsWith(".ts"))
+	await lockModules(config, modules)
 }
+
+function isPromise(obj: any) {
+	return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
+}
+
 async function run(config: DenonConfig, main: Array<string>, opts: RunOpts) {
 	let entrypoint = resolveEntrypoint(config, main)
 
@@ -124,7 +115,10 @@ async function run(config: DenonConfig, main: Array<string>, opts: RunOpts) {
 	} finally {
 		await Deno.remove(tempFile)
 	}
-	compiled.run()
+	const result = compiled.run()
+	if (isPromise(result)) {
+		await result
+	}
 }
 
 async function main(config: DenonConfig, args: Array<string>) {
@@ -165,7 +159,10 @@ async function main(config: DenonConfig, args: Array<string>) {
 			run(config, main, opts)
 			break
 		case 'lock':
-			lock(config, main)
+			if (main.length > 0) {
+				throw new Error("too many arguments")
+			}
+			lock(config)
 			break
 		default:
 			throw new Error("unknown action")
