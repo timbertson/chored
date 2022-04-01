@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "${DENON_VERBOSE:-}" = 1 ]; then
+	set -x
+fi
+
+
+if [ -z "${DENO:-}" ]; then
+	DENO="$(which deno 2>/dev/null || true)"
+fi
+if [ -z "${DENO:-}" ]; then
+	DENON_CACHE="${DENON_CACHE:-$HOME/.cache/denon}"
+	DENO_VERSION="${DENO_VERSION:-1.18.0}"
+
+	PLATFORM_ARCH=""
+	# Add more as needed
+	case "$(uname -sm)" in
+		"Darwin x86_64")
+			PLATFORM_ARCH="x86_64-apple-darwin"
+			;;
+
+		"Linux x86_64")
+			PLATFORM_ARCH="x86_64-unknown-linux-gnu"
+			;;
+	esac
+	[ -n "$PLATFORM_ARCH" ]
+	DENO_DIR="$DENON_CACHE/${PLATFORM_ARCH}-${DENO_VERSION}/"
+	mkdir -p "$DENO_DIR"
+	DENO="$DENO_DIR/deno"
+	if [ ! -e "$DENO" ]; then
+		ZIP_FILE="$DENO_DIR/deno.zip"
+		curl -sSL "https://github.com/denoland/deno/releases/download/v${DENO_VERSION}/deno-$PLATFORM_ARCH.zip" > "$ZIP_FILE"
+		unzip -d "$DENO_DIR" "$ZIP_FILE"
+		rm "$ZIP_FILE"
+	fi
+fi
+export DENO
+export DENON_TASKS="$PWD/denon-tasks"
+
+# TODO public (pinned) url
+DENON_MAIN="$PWD/main.ts"
+
+here="$PWD"
+tmp="$TMPDIR"
+DENO_ARGS=(--unstable --allow-all)
+
+if [ "$#" -gt 0 ]; then
+	LIKELY_TASK="$1"
+	case "$1" in
+		run)
+			LIKELY_TASK="${2:-}"
+			;;
+	esac
+
+	LIEKLY_LOCKFILE="${LIKELY_TASK}/${1:-}.lock"
+
+	if [ -e "$LIEKLY_LOCKFILE" ]; then
+		DENO_ARGS+=(--lock="$LIEKLY_LOCKFILE")
+	fi
+fi
+
+exec "$DENO" run "${DENO_ARGS[@]}" "${DENON_MAIN:-TODO}" "$@"
