@@ -1,8 +1,10 @@
 export const MARKER = "NOTE: This file is generated" + " by denon"
 const HEADER_LINES = [MARKER]
 
-export function renderHeaderLines(opts: { linePrefix: string }) {
-	const lines = HEADER_LINES.map(l => opts.linePrefix + l)
+export function renderHeaderLines(opts: { linePrefix: string, lineSuffix?: string|null }) {
+	const prefix = opts.linePrefix + " "
+	const suffix = opts.lineSuffix ? (" " + opts.lineSuffix) : ""
+	const lines = HEADER_LINES.map(l => prefix + l + suffix)
 	lines.push("")
 	return lines
 }
@@ -49,22 +51,24 @@ export abstract class DerivedFile {
 }
 
 export class TextFile extends BaseFile<string> implements Writeable {
+	headerLinePrefix: string = "#"
+	headerLineSuffix: string | null = null
+
 	serialize(): string {
-		const lines = renderHeaderLines({ linePrefix: "# " })
+		const lines = renderHeaderLines({ linePrefix: this.headerLinePrefix, lineSuffix: this.headerLineSuffix })
 		lines.push(this.value)
 		return join(lines)
 	}
 }
 
-
 export const GENERATED_ATTR = "denon-generated"
 export class GitAttributes extends DerivedFile {
-	static default = new GitAttributes(".gitattributes", [])
+	static default = new GitAttributes([])
 
 	extraLines: Array<string>
 
-	constructor(path: string, extraLines: Array<string>) {
-		super(path)
+	constructor(extraLines: Array<string>) {
+		super(".gitattributes")
 		this.extraLines = extraLines
 	}
 

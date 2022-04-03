@@ -1,11 +1,5 @@
-import { existsSync } from "./lib/fs.ts"
-
-function notNull<T>(desc: string, v: T|undefined|null): T {
-	if (v == null) {
-		throw new Error(`Error: null ${desc}`)
-	}
-	return v
-}
+import { FS, DenoFS } from './lib/fsImpl.ts'
+import notNull from './lib/notNull.ts'
 
 interface Code {
 	tsLiteral: string
@@ -31,11 +25,12 @@ interface Entrypoint {
 	fn: string,
 }
 
-function resolveEntrypoint(config: DenonConfig, main: Array<string>): Entrypoint {
+function resolveEntrypoint(config: DenonConfig, main: Array<string>, fsOverride?: FS): Entrypoint {
+	const fs = fsOverride || DenoFS
 	// NOTE: should maybe support relative paths one day?
 	const expandLocal = (f: string) => `${config.taskRoot}/${f}.ts`
 	const isURI = (f: string) => f.lastIndexOf("://") !== -1
-	const isModule = (f: string) => isURI(f) || existsSync(expandLocal(f))
+	const isModule = (f: string) => isURI(f) || fs.existsSync(expandLocal(f))
 	const expand = (f: string) => isURI(f) ? f : expandLocal(f)
 
 	if (main.length == 2) {
@@ -53,7 +48,7 @@ function resolveEntrypoint(config: DenonConfig, main: Array<string>): Entrypoint
 			}
 		} else {
 			let module = expandLocal("index")
-			if (!existsSync(module)) {
+			if (!fs.existsSync(module)) {
 				let entryModule = expandLocal(entry)
 				throw new Error(`Couldn't find a typescript module for ${entry} (${entryModule}) or index (${module})`)
 			}
@@ -169,7 +164,9 @@ async function main(config: DenonConfig, args: Array<string>) {
 	}
 }
 
-main({
-	denoExe: notNull("$DENO", Deno.env.get("DENO")),
-	taskRoot: notNull("$DENON_TASKS", Deno.env.get("DENON_TASKS")),
-}, Deno.args.slice())
+if (import.meta.main) {
+	main({
+		denoExe: notNull("$DENO", Deno.env.get("DENO")),
+		taskRoot: notNull("$DENON_TASKS", Deno.env.get("DENON_TASKS")),
+	}, Deno.args.slice())
+}

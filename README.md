@@ -187,3 +187,25 @@ I have a long history of appreciating systems which don't require _stateful_ man
  - dhall
 
 Nix is the most mainstream of these, but it's also a big investment - you have to go all in. Deno is likely to be somewhat mainstream, and is very low investment, because you can (largely) just Run Some Typescript.
+
+
+---
+
+
+
+# TODO:
+
+Cmd:
+
+Git:
+
+Docker:
+build / run / project
+
+GH actions stuff:
+ - self-update
+ - versioning
+ - workflow schema
+ - deno setup, denon action
+
+local substitution: deno module map?

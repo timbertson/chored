@@ -1,40 +1,47 @@
 // Code for writing out a set of generated files
-import { isNotFound } from '../fs.ts'
-import { Writeable, DerivedFile, GitAttributes, GENERATED_ATTR } from './file-internal.ts'
+import { FS, DenoFS, FSUtil } from '../fsImpl.ts'
+import { Writeable, GitAttributes, GENERATED_ATTR } from './fileInternal.ts'
 export * from './file.ts'
 
 export type Options = {
-	files: Array<Writeable>,
+	gitattributesExtra?: Array<string>
 }
 
-export async function write(options: Options) {
-	const derivedFiles: Array<DerivedFile> = [GitAttributes.default]
-	const allPaths = derivedFiles.map(f => f.path).concat(options.files.map(f =>f.path))
+export async function render(files: Array<Writeable>, options?: Options, fsOverride?: FS): Promise<void> {
+	options = options || {}
+	const allPaths = files.map(f =>f.path)
+	allPaths.push(GitAttributes.default.path)
 	allPaths.sort()
-	const files: Array<Writeable> = options.files.slice()
-	for (let file of derivedFiles) {
-		files.push(file.derive(allPaths))
-	}
+
+	const attributesFile = new GitAttributes(options.gitattributesExtra || []).derive(allPaths)
 	
+	const fs = fsOverride || DenoFS
+	const fsUtil = FSUtil(fs)
 	let previousPaths: Array<string> = []
 	try {
-		previousPaths = generatedFromGitAttributes(await Deno.readTextFile(GitAttributes.default.path))
+		const fileContents = await fs.readTextFile(attributesFile.path)
+		previousPaths = generatedFromGitAttributes(fileContents)
 	} catch (err) {
-		if (isNotFound(err)) {
-			console.warn(`Can't check generated files in ${GitAttributes.default.path}; assuming this is the first file generation run`)
+		if (fsUtil.isNotFound(err)) {
+			console.warn(`Can't check generated files in ${attributesFile.path}; assuming this is the first file generation run`)
 		} else {
 			throw err
 		}
 	}
 	
 	const toRemove = previousPaths.filter(p => allPaths.indexOf(p) == -1)
-	console.warn("WARN removing", toRemove)
+	await Promise.all(toRemove.map(p => fs.remove(p)))
 	
+	// always write attributes file first, so that if anything fails we've
+	// at least recorded all files
+	const attributesTmp = attributesFile.path + '.tmp'
+	fs.writeTextFile(attributesTmp, attributesFile.serialize())
+	await fs.rename(attributesTmp, attributesFile.path)
 	for (let file of files) {
-		console.log("###### ", file.path)
-		console.log(file.serialize())
-		console.log("====================\n\n\n\n")
+		await fsUtil.mkdirp(fsUtil.dirname(file.path))
+		await fs.writeTextFile(file.path, file.serialize())
 	}
+	console.warn(`Generated ${files.length + 1} files`)
 }
 
 export function generatedFromGitAttributes(contents: string): Array<string> {
