@@ -4,7 +4,7 @@ export interface Stdio {
 	inherit?: boolean,
 	discard?: boolean,
 	string?: boolean,
-	pipeLines?: (line: string) => void,
+	pipeLines?: (line: string) => void | boolean,
 
 	// for string and pipelines
 	includeStderr?: boolean,
@@ -22,17 +22,18 @@ export interface RunOpts {
 	stdio?: Stdio,
 }
 
-export async function run(opts: RunOpts): Promise<RunResult> {
+export async function run(cmd: Array<string>, opts?: RunOpts): Promise<RunResult> {
 	throw new Error("TODO")
 }
 
-export async function runTest(opts: RunOpts): Promise<boolean> {
+export async function runTest(cmd: Array<string>, opts?: RunOpts): Promise<boolean> {
 	throw new Error("TODO")
 }
 
-export async function runOutput(opts: RunOpts): Promise<string> {
+export async function runOutput(cmd: Array<string>, opts?: RunOpts): Promise<string> {
+	opts = opts || {}
 	const stdio = opts.stdio || {}
-	const p = await run({
+	const p = await run(cmd, {
 		...opts,
 		stdio: { ... stdio,
 			string: true
