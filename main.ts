@@ -133,8 +133,10 @@ async function main(config: DenonConfig, args: Array<string>) {
 		if (arg == null) {
 			break
 		}
-		if (arg == 'lock') {
+		if (arg == '--lock') {
 			action = 'lock'
+		} else if (arg == '--run') {
+			action = 'run'
 		} else if (arg == '--string' || arg == '-s') {
 			let key = shift()
 			opts[key] = Code.value(shift())

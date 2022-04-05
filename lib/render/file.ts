@@ -30,20 +30,6 @@ export class RawFile extends BaseFile<string> implements Writeable {
 
 export class ExecutableFile extends TextFile {
 	executable: boolean = true
-
-	serialize(): string {
-		const header = renderHeaderLines({ linePrefix: "#" })
-		let lines: Array<string> = []
-		if (this.value.startsWith("#!")) {
-			lines = this.value.split("\n")
-			lines.splice(1, 0, ...header)
-		} else {
-			lines = header
-			lines.push(this.value)
-		}
-		lines.push(this.value)
-		return join(lines)
-	}
 }
 
 export class HTMLFile extends TextFile {

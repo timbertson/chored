@@ -1,10 +1,11 @@
-import { dirname } from "https://deno.land/std@0.132.0/path/mod.ts"
+import { dirname } from "https://deno.land/std@0.133.0/path/mod.ts"
 
 export interface FS {
 	// subset of Deno interface
 	readTextFile(path: string): Promise<string>
-	writeTextFile(path: string, contents: string): Promise<void>
+	writeTextFile(path: string, contents: string, options?: Deno.WriteFileOptions): Promise<void>
 	existsSync(path: string): boolean
+	chmod(path: string, mode: number): Promise<void>
 	mkdir(path: string): Promise<void>
 	remove(path: string): Promise<void>
 	rename(src: string, dest: string): Promise<void>
@@ -18,16 +19,52 @@ const FSUtilPure = {
 	},
 }
 
-// utils for an arbitrary FN impl
+// utils for an arbitrary FS impl
 export function FSUtil(fs: FS) {
+	async function retryWithChmod(path: string, fn: () => Promise<void>) {
+		try {
+			await fn()
+		} catch(e) {
+			if (e instanceof Deno.errors.PermissionDenied) {
+				// assume it's just a missing write permission
+				await fs.chmod(path, 0o600)
+				await fn()
+			} else {
+				throw e
+			}
+		}
+	}
+
 	const Self = {
 		mkdirp: async function(path: string): Promise<void> {
 			if (!fs.existsSync(path)) {
 				await Self.mkdirp(dirname(path))
 				await fs.mkdir(path)
 			}
-		}
+		},
+
+		forceWriteTextFile: async function(path: string, contents: string, useTemp: boolean, opts: Deno.WriteFileOptions): Promise<void> {
+			const writeDest = useTemp ? path + '.tmp' : path
+			await retryWithChmod(writeDest, () => fs.writeTextFile(writeDest, contents, opts))
+			if (useTemp) {
+				await retryWithChmod(path, () => fs.rename(writeDest, path))
+			}
+		},
+
+		removeIfPresent: async function(path: string): Promise<boolean> {
+			try {
+				await fs.remove(path)
+				return true
+			} catch(e) {
+				if (FSUtilPure.isNotFound(e)) {
+					return false
+				} else {
+					throw e
+				}
+			}
+		},
 	}
+
 	return { ... Self, ...FSUtilPure }
 }
 
@@ -52,7 +89,7 @@ export class FakeFS implements FS {
 		return Promise.resolve(contents)
 	}
 
-	writeTextFile(path: string, contents: string): Promise<void> {
+	writeTextFile(path: string, contents: string, options?: Deno.WriteFileOptions): Promise<void> {
 		this.files[path] = contents
 		return Promise.resolve()
 	}
@@ -79,17 +116,13 @@ export class FakeFS implements FS {
 		this.dirs[path] = true
 		return Promise.resolve()
 	}
+
+	chmod(path: string, mode: number): Promise<void> {
+		return Promise.resolve()
+	}
 }
 
 const DenoFSImpl: FS = {
-	readTextFile: function(path: string): Promise<string> {
-		return Deno.readTextFile(path)
-	},
-
-	writeTextFile: function(path: string, contents: string): Promise<void> {
-		return Deno.writeTextFile(path, contents)
-	},
-	
 	existsSync: function(filePath: string): boolean {
 		try {
 			Deno.lstatSync(filePath);
@@ -102,9 +135,12 @@ const DenoFSImpl: FS = {
 		}
 	},
 
+	readTextFile: Deno.readTextFile,
+	writeTextFile: Deno.writeTextFile,
 	remove: Deno.remove,
 	rename: Deno.rename,
 	mkdir: Deno.mkdir,
+	chmod: Deno.chmod,
 }
 
 export const DenoFS = {

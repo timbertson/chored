@@ -1,6 +1,6 @@
-import { assertEquals } from "https://deno.land/std@0.133.0/testing/asserts.ts";
+import { assertEquals } from '../common.ts'
 import * as Render from '../../lib/render/index.ts'
-import { MARKER } from '../../lib/render/fileInternal.ts'
+import { MARKER, writeMode, WriteableOpts } from '../../lib/render/fileInternal.ts'
 import { FakeFS } from '../../lib/fsImpl.ts'
 
 function render(files: Array<Render.Writeable>, fs: FakeFS): Promise<void> {
@@ -10,7 +10,7 @@ function render(files: Array<Render.Writeable>, fs: FakeFS): Promise<void> {
 Deno.test("render files", async () => {
 	const fs = new FakeFS()
 	fs.writeTextFile("previously-generated", "contents")
-	fs.writeTextFile(".gitattributes", "previously-generated linguist-generated denon-generated")
+	fs.writeTextFile(".gitattributes", "previously-generated linguist-generated denon-generated\nnonexistent denon-generated")
 	fs.writeTextFile("manual", "contents")
 	
 	await render([
@@ -44,3 +44,16 @@ Deno.test("render files", async () => {
 
 	assertEquals(fs.dirs['nested'], true, "parent directory created")
 });
+
+Deno.test("render mode", () => {
+	const mode = (opts: WriteableOpts) => writeMode(opts).toString(8)
+	assertEquals(mode({}), "400") // r--
+	assertEquals(mode({ executable: true }), "500") // r-x
+	assertEquals(mode({ readOnly: false }), "600") // rw-
+	assertEquals(mode({ readOnly: false, executable: true }), "700") // rwx
+})
+
+Deno.test("shebang formatting", async () => {
+	const contents = new Render.ExecutableFile("dest", "#!/usr/bin/env bash\necho HELLO").serialize().split("\n")
+	assertEquals(contents, ["#!/usr/bin/env bash", `# ${MARKER}`, "", "echo HELLO"])
+})

@@ -24,6 +24,32 @@ export interface Writeable extends FileMeta {
 	serialize(): string
 }
 
+export function writeMode(file: WriteableOpts) {
+	let mode = 0o400
+
+	if (file.readOnly === false) {
+		mode = mode | 0o200
+	}
+
+	if (file.executable === true) {
+		mode = mode | 0o100
+	}
+	
+	return mode
+}
+
+// minimal type to remove the need to depend on fsimpl
+type FSUtil = {
+	dirname(path: string): string,
+	mkdirp(path: string): Promise<void>,
+	forceWriteTextFile(path: string, contents: string, useTemp: boolean, opts: Deno.WriteFileOptions): Promise<void>,
+}
+
+export async function writeTo(fsUtil: FSUtil, file: Writeable, useTemp: boolean): Promise<void> {
+	await fsUtil.mkdirp(fsUtil.dirname(file.path))
+	await fsUtil.forceWriteTextFile(file.path, file.serialize(), useTemp, { mode: writeMode(file) })
+}
+
 export abstract class BaseFile<T> {
 	path: string
 	value: T
@@ -55,8 +81,15 @@ export class TextFile extends BaseFile<string> implements Writeable {
 	headerLineSuffix: string | null = null
 
 	serialize(): string {
-		const lines = renderHeaderLines({ linePrefix: this.headerLinePrefix, lineSuffix: this.headerLineSuffix })
-		lines.push(this.value)
+		const header = renderHeaderLines({ linePrefix: this.headerLinePrefix, lineSuffix: this.headerLineSuffix })
+		let lines: Array<string> = []
+		if (this.value.startsWith("#!")) {
+			lines = this.value.split("\n", 2)
+			lines.splice(1, 0, ...header)
+		} else {
+			lines = header
+			lines.push(this.value)
+		}
 		return join(lines)
 	}
 }

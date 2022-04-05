@@ -1,5 +1,5 @@
 import { run } from '../lib/cmd.ts'
 
-export function main(opts: {}) {
-	run([Deno.execPath(), 'test', 'test/'])
+export async function main(_: {}): Promise<void> {
+	await run([Deno.execPath(), 'test', '--allow-run', 'test/'])
 }

@@ -1,6 +1,6 @@
 // Code for writing out a set of generated files
 import { FS, DenoFS, FSUtil } from '../fsImpl.ts'
-import { Writeable, GitAttributes, GENERATED_ATTR } from './fileInternal.ts'
+import { Writeable, GitAttributes, GENERATED_ATTR, writeTo } from './fileInternal.ts'
 export * from './file.ts'
 
 export type Options = {
@@ -30,16 +30,13 @@ export async function render(files: Array<Writeable>, options?: Options, fsOverr
 	}
 	
 	const toRemove = previousPaths.filter(p => allPaths.indexOf(p) == -1)
-	await Promise.all(toRemove.map(p => fs.remove(p)))
-	
+	await Promise.all(toRemove.map(p => fsUtil.removeIfPresent(p)))
+
 	// always write attributes file first, so that if anything fails we've
 	// at least recorded all files
-	const attributesTmp = attributesFile.path + '.tmp'
-	fs.writeTextFile(attributesTmp, attributesFile.serialize())
-	await fs.rename(attributesTmp, attributesFile.path)
+	await writeTo(fsUtil, attributesFile, true)
 	for (let file of files) {
-		await fsUtil.mkdirp(fsUtil.dirname(file.path))
-		await fs.writeTextFile(file.path, file.serialize())
+		await writeTo(fsUtil, file, false)
 	}
 	console.warn(`Generated ${files.length + 1} files`)
 }
