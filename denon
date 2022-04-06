@@ -5,7 +5,6 @@ if [ "${DENON_VERBOSE:-}" = 1 ]; then
 	set -x
 fi
 
-
 if [ -z "${DENO:-}" ]; then
 	DENO="$(which deno 2>/dev/null || true)"
 fi
