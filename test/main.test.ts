@@ -1,21 +1,14 @@
-import { assertEquals } from './common.ts'
-import { denonBinText } from '../lib/render/denonBin.ts'
+import { assertEquals, assertThrows } from './common.ts'
+import { FakeFS } from '../lib/fsImpl.ts'
 import { run } from '../lib/cmd.ts'
-
-// TODO:
-
-// bootstrap
-// module resoluation
-// argument parsing
-// run a real action
+import * as Main from '../main.ts'
 
 Deno.test("bootstrap", async () => {
 	const here = Deno.cwd()
-	const mainModule = `file://${here}/main.ts`
+	const bootstrapModule = `file://${here}/lib/bootstrap.ts`
 	const testDir = await Deno.makeTempDir({ prefix: 'denon-test-' })
 	try {
-		// NOTE: we should simplify this by producing an explicit bootstrap script
-		await run(['bash', '-c', `cat ${here}/denon | env DENON_MAIN='${mainModule}' bash /dev/stdin --boot`], {
+		await run(['bash', '-c', `cat ${here}/install.sh | env BOOTSTRAP_OVERRIDE='${bootstrapModule}' bash`], {
 			cwd: testDir,
 			printCommand: false,
 			stdout: 'discard',
@@ -37,4 +30,23 @@ Deno.test("bootstrap", async () => {
 	} finally {
 		await run(['rm', '-rf', testDir], { printCommand: false })
 	}
+})
+
+Deno.test("resolveEntrypoint", async () => {
+	const config = Main.defaultConfig()
+	const base = config.taskRoot
+	const resolve = (args: Array<string>) => Main.resolveEntrypoint(Main.defaultConfig(), args, fs)
+
+	const fs = new FakeFS()
+	await fs.writeTextFile(`${base}/render.ts`, '')
+
+	assertEquals(resolve(['render']), { fn: 'main', module: base + '/render.ts' })
+
+	// initially there's no index, so unknown actions are rejected
+	assertThrows(() => resolve(['foo']), undefined, "Couldn't find a typescript module for foo")
+
+	// with index, unknown action are assumed to be functions
+	await fs.writeTextFile(`${base}/index.ts`, '')
+	assertEquals(resolve(['foo']), { fn: 'foo', module: base + '/index.ts' })
+	assertEquals(resolve(['foo', 'bar']), { fn: 'bar', module: base + '/foo.ts' })
 })

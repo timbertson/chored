@@ -95,7 +95,7 @@ export class FakeFS implements FS {
 	}
 
 	existsSync(path: string): boolean {
-		return (this.files[path] || this.dirs[path]) != null
+		return (path in this.files || path in this.dirs)
 	}
 
 	remove(path: string): Promise<void> {

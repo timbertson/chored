@@ -1,6 +1,5 @@
 import { FS, DenoFS } from './lib/fsImpl.ts'
 import notNull from './lib/notNull.ts'
-import * as Bootstrap from './lib/render/bootstrap.ts'
 
 interface Code {
 	tsLiteral: string
@@ -26,7 +25,7 @@ interface Entrypoint {
 	fn: string,
 }
 
-function resolveEntrypoint(config: DenonConfig, main: Array<string>, fsOverride?: FS): Entrypoint {
+export function resolveEntrypoint(config: DenonConfig, main: Array<string>, fsOverride?: FS): Entrypoint {
 	const fs = fsOverride || DenoFS
 	// NOTE: should maybe support relative paths one day?
 	const expandLocal = (f: string) => `${config.taskRoot}/${f}.ts`
@@ -88,7 +87,7 @@ function isPromise(obj: any) {
 	return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
 }
 
-async function run(config: DenonConfig, main: Array<string>, opts: RunOpts) {
+export async function run(config: DenonConfig, main: Array<string>, opts: RunOpts) {
 	let entrypoint = resolveEntrypoint(config, main)
 
 	let indent = "\t\t\t\t"
@@ -134,8 +133,6 @@ async function main(config: DenonConfig, args: Array<string>) {
 		}
 		if (arg == '--lock') {
 			action = 'lock'
-		} else if (arg == '--boot') {
-			action = 'bootstrap'
 		} else if (arg == '--run') {
 			action = 'run'
 		} else if (arg == '--string' || arg == '-s') {
@@ -145,6 +142,10 @@ async function main(config: DenonConfig, args: Array<string>) {
 			let key = shift()
 			let envKey = shift()
 			opts[key] = Code.env(envKey)
+		} else if (arg == '--') {
+			// pass remaining args
+			opts['args'] = Code.value(args)
+			break
 		} else {
 			main.push(arg)
 			// TODO: can we get some doctext when there is a main set and --help passed?
@@ -164,21 +165,18 @@ async function main(config: DenonConfig, args: Array<string>) {
 			lock(config)
 			break
 
-		case 'bootstrap':
-			if (main.length > 0) {
-				throw new Error("too many arguments")
-			}
-			await Bootstrap.install({})
-			break
-
 		default:
 			throw new Error("unknown action")
 	}
 }
 
-if (import.meta.main) {
-	main({
+export function defaultConfig(): DenonConfig {
+	return {
 		denoExe: Deno.execPath(),
-		taskRoot: notNull("$DENON_TASKS", Deno.env.get("DENON_TASKS")),
-	}, Deno.args.slice())
+		taskRoot: Deno.env.get("DENON_TASKS") || "denon-tasks",
+	}
+}
+
+if (import.meta.main) {
+	main(defaultConfig(), Deno.args.slice())
 }

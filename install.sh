@@ -35,25 +35,8 @@ _main() {
 
 	DENO_ARGS=(--unstable --allow-all)
 
-export DENO
-export DENON_TASKS="$PWD/denon-tasks"
-
-here="$PWD"
-tmp="$TMPDIR"
-
-LOCKFILE="$DENON_TASKS/.lock.json"
-if [ -e "$LOCKFILE" ]; then
-	DENO_ARGS+=(--lock="$LOCKFILE")
-fi
-
-if [ "${1:-}" = "--exec" ]; then
-	shift
-	exec "$DENO" "$@"
-fi
-
-DENON_MAIN_FALLBACK='./main.ts'
-
-exec "$DENO" run "${DENO_ARGS[@]}" "${DENON_MAIN:-$DENON_MAIN_FALLBACK}" "$@"
+BOOTSTRAP='https://TODO-PUBLIC-URL.example.com/'
+exec "$DENO" run "${DENO_ARGS[@]}" "${BOOTSTRAP_OVERRIDE:-$BOOTSTRAP}"
 
 }
 

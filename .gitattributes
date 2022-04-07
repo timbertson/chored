@@ -4,3 +4,4 @@
 denon linguist-generated denon-generated
 example/generated.json linguist-generated denon-generated
 example/generated.yaml linguist-generated denon-generated
+install.sh linguist-generated denon-generated
