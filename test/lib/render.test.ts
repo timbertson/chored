@@ -25,22 +25,20 @@ Deno.test("render files", async () => {
 			`# ${MARKER}`,
 			"",
 			attrLine(".gitattributes"),
+			attrLine("denon"),
 			attrLine("generated"),
 			attrLine("nested/generated"),
-		].join("\n"),
-		"gitattributes contents"
-	)
+		].join("\n"))
 	
 	await fs.remove('.gitattributes')
+	await fs.remove('denon')
 	assertEquals(
 		fs.files,
 		{
 			"generated": "contents",
 			"manual": "contents",
 			"nested/generated": "contents",
-		},
-		"remaining file contents"
-	)
+		})
 
 	assertEquals(fs.dirs['nested'], true, "parent directory created")
 });
@@ -54,6 +52,6 @@ Deno.test("render mode", () => {
 })
 
 Deno.test("shebang formatting", async () => {
-	const contents = new Render.ExecutableFile("dest", "#!/usr/bin/env bash\necho HELLO").serialize().split("\n")
-	assertEquals(contents, ["#!/usr/bin/env bash", `# ${MARKER}`, "", "echo HELLO"])
+	const contents = new Render.ExecutableFile("dest", "#!/usr/bin/env bash\nline1\nline2").serialize().split("\n")
+	assertEquals(contents, ["#!/usr/bin/env bash", `# ${MARKER}`, "", "line1", "line2"])
 })

@@ -2,16 +2,31 @@
 import { FS, DenoFS, FSUtil } from '../fsImpl.ts'
 import { Writeable, GitAttributes, GENERATED_ATTR, writeTo } from './fileInternal.ts'
 export * from './file.ts'
+export { wrapperScript } from './denonBin.ts'
+import { wrapperScript } from './denonBin.ts'
 
 export type Options = {
-	gitattributesExtra?: Array<string>
+	gitattributesExtra?: Array<string>,
+	wrapperScript?: boolean | Writeable,
 }
 
 export async function render(files: Array<Writeable>, options?: Options, fsOverride?: FS): Promise<void> {
 	options = options || {}
+	files = files.slice()
+	if (options.wrapperScript !== false) {
+		const script = (
+			(options.wrapperScript === true || options.wrapperScript == null)
+			? wrapperScript({})
+			: options.wrapperScript
+		)
+		files.push(script)
+	}
 	const allPaths = files.map(f =>f.path)
 	allPaths.push(GitAttributes.default.path)
 	allPaths.sort()
+	if (new Set(allPaths).size != allPaths.length) {
+		throw new Error(`Duplicate path in ${JSON.stringify(allPaths)}`)
+	}
 
 	const attributesFile = new GitAttributes(options.gitattributesExtra || []).derive(allPaths)
 	

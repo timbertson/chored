@@ -6,10 +6,13 @@ if (suffixLocation < 0) {
 	throw new Error("invalid self url")
 }
 
+export interface Options {
+	mainModule?: string,
+}
 export const mainModule = thisModule.substring(0, suffixLocation) + "/main.ts"
 export const denoVersion = '1.18.0'
 
-export function denonBinText(opts: { mainModule: string, denoVersion: string }) {
+export function denonBinText(opts: Options) {
 	return `
 #!/usr/bin/env bash
 set -euo pipefail
@@ -64,11 +67,12 @@ if [ "\${1:-}" = "--exec" ]; then
 	exec "$DENO" "$@"
 fi
 
-DENON_MAIN_FALLBACK='${mainModule}'
+DENON_MAIN_FALLBACK='${opts.mainModule ?? mainModule}'
 
 exec "$DENO" run "\${DENO_ARGS[@]}" "\${DENON_MAIN:-$DENON_MAIN_FALLBACK}" "$@"
 `.trim()
 }
 
-export const wrapperScript = new ExecutableFile("denon",
-	denonBinText({ mainModule, denoVersion }))
+export function wrapperScript(opts: Options) {
+	return new ExecutableFile("denon", denonBinText(opts))
+}

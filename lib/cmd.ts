@@ -2,15 +2,7 @@ import { readLines } from "https://deno.land/std@0.133.0/io/buffer.ts"
 
 import notNull from './notNull.ts'
 
-export interface Stdio {
-	inherit?: boolean,
-	discard?: boolean,
-	string?: boolean,
-	pipeLines?: (line: string) => void,
-	
-	// TODO add includeStderr for merging the two
-	discardStderr?: boolean,
-}
+export type Stdio = 'inherit' | 'discard' | 'string' | ((line: string) => void)
 
 export interface RunResult {
 	output: string|null,
@@ -18,9 +10,11 @@ export interface RunResult {
 }
 
 export interface RunOpts {
-	showCommand?: boolean,
+	printCommand?: boolean,
 	allowFailure?: boolean,
-	stdio?: Stdio,
+	stdout?: Stdio,
+	stderr?: 'discard',
+	cwd?: string,
 }
 
 type DenoStdio = "inherit" | "piped" | "null" | number
@@ -44,23 +38,29 @@ function pipeAction(fn: (line: string) => void): OutputAction {
 }
 
 export async function run(cmd: Array<string>, opts?: RunOpts): Promise<RunResult> {
-	const stdio = opts?.stdio || {}
+	if (opts?.printCommand !== false) {
+		console.warn(' + ' + cmd.join(' '))
+	}
 	let stdout: DenoStdio = 'inherit'
 	let stderr: DenoStdio = 'inherit'
 	let action: OutputAction = noopAction
-	if (stdio.discard) {
-		stdout = 'null'
-	} else if (stdio.inherit) {
-		stdout = 'inherit'
-	} else if (stdio.string) {
-		stdout = 'piped'
-		action = readAction
-	} else if (stdio.pipeLines) {
-		stdout = 'piped'
-		action = pipeAction(stdio.pipeLines)
+	
+	if (opts?.stdout) {
+		const out = opts.stdout
+		if (typeof(out) === 'function') {
+			stdout = 'piped'
+			action = pipeAction(out)
+		} else if (out === 'discard') {
+			stdout = 'null'
+		} else if (out === 'inherit') {
+			stdout = 'inherit'
+		} else if (out === 'string') {
+			stdout = 'piped'
+			action = readAction
+		}
 	}
 
-	if (stdio.discardStderr) {
+	if (opts?.stderr === 'discard') {
 		stderr = 'null'
 	}
 
@@ -68,6 +68,7 @@ export async function run(cmd: Array<string>, opts?: RunOpts): Promise<RunResult
 		cmd: cmd,
 		stdout: stdout,
 		stderr: stderr,
+		cwd: opts?.cwd,
 	}
 
 	const p = Deno.run(runOpts)
@@ -82,7 +83,6 @@ export async function run(cmd: Array<string>, opts?: RunOpts): Promise<RunResult
 }
 
 export async function runTest(cmd: Array<string>, opts?: RunOpts): Promise<boolean> {
-	opts = opts || {}
 	const p = await run(cmd, {
 		...opts,
 		allowFailure: true
@@ -90,14 +90,19 @@ export async function runTest(cmd: Array<string>, opts?: RunOpts): Promise<boole
 	return p.status.success
 }
 
+export async function runSilent(cmd: Array<string>, opts?: RunOpts): Promise<RunResult> {
+	return run(cmd, {
+		...opts,
+		printCommand: false,
+		stdout: 'discard',
+	})
+}
+
+
 export async function runOutput(cmd: Array<string>, opts?: RunOpts): Promise<string> {
-	opts = opts || {}
-	const stdio = opts.stdio || {}
 	const p = await run(cmd, {
 		...opts,
-		stdio: { ... stdio,
-			string: true
-		}
+		stdout: 'string',
 	})
 	return notNull('process output', p.output)
 }

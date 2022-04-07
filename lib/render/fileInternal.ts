@@ -84,7 +84,7 @@ export class TextFile extends BaseFile<string> implements Writeable {
 		const header = renderHeaderLines({ linePrefix: this.headerLinePrefix, lineSuffix: this.headerLineSuffix })
 		let lines: Array<string> = []
 		if (this.value.startsWith("#!")) {
-			lines = this.value.split("\n", 2)
+			lines = this.value.split("\n")
 			lines.splice(1, 0, ...header)
 		} else {
 			lines = header

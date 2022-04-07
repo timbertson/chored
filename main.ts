@@ -1,5 +1,6 @@
 import { FS, DenoFS } from './lib/fsImpl.ts'
 import notNull from './lib/notNull.ts'
+import * as Bootstrap from './lib/render/bootstrap.ts'
 
 interface Code {
 	tsLiteral: string
@@ -67,7 +68,6 @@ interface RunOpts {
 const lockPath = (config: DenonConfig) => `${config.taskRoot}/.lock.json`
 
 async function lockModules(config: DenonConfig, paths: Array<string>): Promise<void> {
-	// TODO do in parallel, collect output so it doesn't interleave
 	console.log(`Locking ${paths.length} task modules -> ${lockPath(config)}`)
 	const p = Deno.run({ cmd:
 		[ config.denoExe, "cache", "--lock", lockPath(config), "--lock-write", import.meta.url, ...paths ]
@@ -94,7 +94,6 @@ async function run(config: DenonConfig, main: Array<string>, opts: RunOpts) {
 	let indent = "\t\t\t\t"
 	let optsCode = `{\n${indent}` + Object.entries(opts).map(([k,v]) => `${k}: ${v.tsLiteral}`).join(`,\n${indent}`) + `\n${indent}}`
 
-	// TODO typecheck
 	let tsLiteral = `
 		import { ${entrypoint.fn} } from ${JSON.stringify(entrypoint.module)}
 		export function run() {
@@ -135,6 +134,8 @@ async function main(config: DenonConfig, args: Array<string>) {
 		}
 		if (arg == '--lock') {
 			action = 'lock'
+		} else if (arg == '--boot') {
+			action = 'bootstrap'
 		} else if (arg == '--run') {
 			action = 'run'
 		} else if (arg == '--string' || arg == '-s') {
@@ -155,12 +156,21 @@ async function main(config: DenonConfig, args: Array<string>) {
 		case 'run':
 			run(config, main, opts)
 			break
+
 		case 'lock':
 			if (main.length > 0) {
 				throw new Error("too many arguments")
 			}
 			lock(config)
 			break
+
+		case 'bootstrap':
+			if (main.length > 0) {
+				throw new Error("too many arguments")
+			}
+			await Bootstrap.install({})
+			break
+
 		default:
 			throw new Error("unknown action")
 	}
@@ -168,7 +178,7 @@ async function main(config: DenonConfig, args: Array<string>) {
 
 if (import.meta.main) {
 	main({
-		denoExe: notNull("$DENO", Deno.env.get("DENO")),
+		denoExe: Deno.execPath(),
 		taskRoot: notNull("$DENON_TASKS", Deno.env.get("DENON_TASKS")),
 	}, Deno.args.slice())
 }
