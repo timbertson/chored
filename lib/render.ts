@@ -1,9 +1,9 @@
 // Code for writing out a set of generated files
-import { FS, DenoFS, FSUtil } from '../fsImpl.ts'
-import { Writeable, GitAttributes, GENERATED_ATTR, writeTo } from './fileInternal.ts'
-export * from './file.ts'
-export { wrapperScript } from './denonBin.ts'
-import { wrapperScript } from './denonBin.ts'
+import { FS, DenoFS, FSUtil } from './fsImpl.ts'
+import { Writeable, GitAttributes, GENERATED_ATTR, writeTo } from './render/fileInternal.ts'
+export * from './render/file.ts'
+export { wrapperScript } from './render/denonBin.ts'
+import { wrapperScript } from './render/denonBin.ts'
 
 export type Options = {
 	gitattributesExtra?: Array<string>,

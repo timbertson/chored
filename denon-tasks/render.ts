@@ -1,4 +1,4 @@
-import { render, JSONFile, YAMLFile, RawFile, ExecutableFile } from '../lib/render/index.ts'
+import { render, JSONFile, YAMLFile, RawFile, ExecutableFile } from '../lib/render.ts'
 import { wrapperScript, bootstrapText } from '../lib/render/denonBin.ts'
 
 export async function main(_: {}): Promise<void> {

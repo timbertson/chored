@@ -1,7 +1,7 @@
 // invoked directly by bootstrap script
 import { DenoFS } from './fsImpl.ts'
 
-const renderModule = import.meta.url.replace(/bootstrap.ts$/, 'render/index.ts')
+const renderModule = import.meta.url.replace(/bootstrap.ts$/, 'render.ts')
 
 const renderTask = `
 import { render, wrapperScript, JSONFile, YAMLFile } from '${renderModule}'

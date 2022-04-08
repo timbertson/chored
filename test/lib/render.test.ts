@@ -1,5 +1,5 @@
 import { assertEquals } from '../common.ts'
-import * as Render from '../../lib/render/index.ts'
+import * as Render from '../../lib/render.ts'
 import { MARKER, writeMode, WriteableOpts } from '../../lib/render/fileInternal.ts'
 import { FakeFS } from '../../lib/fsImpl.ts'
 
