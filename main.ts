@@ -127,6 +127,11 @@ async function main(config: DenonConfig, args: Array<string>) {
 	let main = []
 	let opts: { [index: string]: Code } = {}
 	while(true) {
+		// TODO: more terse arg parsing:
+		// `--foo bar` and `--foo=bar` short for `-s foo bar`
+		// `--foo` short for `-b foo true' (when the next arg starts with `-` or there is none)
+		// `--no-foo` short for `-b foo false'
+
 		let arg = args.shift()
 		if (arg == null) {
 			break
@@ -142,7 +147,7 @@ async function main(config: DenonConfig, args: Array<string>) {
 			let key = shift()
 			let envKey = shift()
 			opts[key] = Code.env(envKey)
-		} else if (arg == '--') {
+		} else if (arg === '--' || arg === '-') {
 			// pass remaining args
 			opts['args'] = Code.value(args)
 			break

@@ -1,5 +1,7 @@
 import notNull from './notNull.ts'
 import { run } from './cmd.ts'
+import { FS, DenoFS } from './fsImpl.ts';
+import { walk, WalkOptions as DenoWalkOptions } from './walk.ts'
 /*
  * parse imports
  *
@@ -135,22 +137,29 @@ function parse(url: string): Source | null {
 	return parseGH(url)
 }
 
+type AsyncReplacer = (url: string) => Promise<string>
+
 export class Bumper {
 	private static dot = new TextEncoder().encode('.')
 
+	private fs: FS
 	private cache: { [index: string]: Promise<string|null> } = {}
 	private fetchCount: number = 0
 	private changeCount: number = 0
+	
+	constructor(fsOverride?: FS) {
+		this.fs = fsOverride || DenoFS
+	}
 
-	async bump(url: string): Promise<string|null> {
+	private async replaceURL(url: string): Promise<string> {
 		const source = parse(url)
 		if (source == null) {
-			return null
+			return url
 		}
-		return this.bumpSource(source)
+		return this.replaceSource(source).then(repl => repl ?? url)
 	}
 	
-	async bumpSource(source: Source): Promise<string|null> {
+	private async replaceSource(source: Source): Promise<string|null> {
 		const id = source.cacheId()
 		let cached = this.cache[id]
 		if (cached == null) {
@@ -169,4 +178,59 @@ export class Bumper {
 	summarize() {
 		console.log(`\nUpdated ${this.changeCount} of ${this.fetchCount} remotes`)
 	}
+	
+	async bumpFile(path: string, replacer?: AsyncReplacer): Promise<boolean> {
+		const defaultReplacer = (url: string) => this.replaceURL(url)
+		const contents = await this.fs.readTextFile(path)
+		const result = await Bumper.processImportURLs(contents, replacer || defaultReplacer)
+		if (contents !== result) {
+			await this.fs.writeTextFile(path, result)
+			return true
+		} else {
+			return false
+		}
+	}
+
+	static async processImportURLs(contents: string, fn: AsyncReplacer) {
+		const importRe = /^(\s*(?:import|export) .* from ['"])(https?:\/\/[^'"]+)(['"];?\s*)$/gm
+
+		// technique from https://stackoverflow.com/questions/52417975/using-promises-in-string-replace
+		const replacements: { [index: string]: string } = {}
+		const promises: Array<Promise<void>> = []
+		contents.replaceAll(importRe, (_match: string, prefix: string, url: string) => {
+			promises.push(fn(url).then(replacement => {
+				if (replacement != null) {
+					replacements[url] = replacement
+				}
+			}))
+			return ""
+		})
+		await Promise.all(promises)
+		return contents.replaceAll(importRe, (original: string, prefix: string, url: string, suffix: string) => {
+			const newUrl = replacements[url]
+			if (newUrl == null) {
+				return original
+			} else {
+				return prefix + newUrl + suffix
+			}
+		})
+	}
+}
+
+export async function bump(roots: Array<string>, opts: WalkOptions, replacer?: AsyncReplacer): Promise<void> {
+	const work: Array<Promise<boolean>> = []
+	const bumper = new Bumper()
+	for (const root of roots) {
+		for await (const entry of walk(root, { ... opts, followSymlinks: false, includeDirs: false })) {
+			work.push(bumper.bumpFile(entry.path, replacer))
+		}
+	}
+	await Promise.all(work)
+	bumper.summarize()
+}
+
+export interface WalkOptions {
+	exts?: string[]
+	match?: RegExp[]
+	skip?: RegExp[]
 }
