@@ -1,7 +1,7 @@
-import { assertEquals } from './common.ts'
-import notNull from '../lib/notNull.ts'
-import { Bumper, parseGH } from '../lib/bump.ts'
-import { FakeFS } from "../lib/fsImpl.ts";
+import { assertEquals } from '../common.ts'
+import notNull from '../../lib/notNull.ts'
+import { Bumper, parseGH } from '../../lib/bump.ts'
+import { FakeFS } from '../../lib/fsImpl.ts'
 
 const url = (r: string, spec?: string) => {
 	const base = `https://raw.githubusercontent.com/timbertson/dhall-ci/${r}/Meta/package.dhall`

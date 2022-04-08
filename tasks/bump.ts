@@ -6,12 +6,10 @@ export type Options = WalkOptions & {
 
 export const defaultOptions = {
 	exts: ['.ts'],
+	skip: [/^\..+/],
 	args: ['.'],
 }
 
 export async function main(opts: Options) {
-	let fullOpts = {}
-	Object.assign(fullOpts, defaultOptions)
-	Object.assign(fullOpts, opts)
-	await bump(opts.args || ['.'], opts)
+	await bump(opts.args || ['.'], { ...defaultOptions, ...opts })
 }

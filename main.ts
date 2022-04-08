@@ -114,6 +114,8 @@ export async function run(config: DenonConfig, main: Array<string>, opts: RunOpt
 	}
 }
 
+const bools: { [index: string]: boolean } = { true: true, false: false }
+
 async function main(config: DenonConfig, args: Array<string>) {
 	let shift = () => {
 		let ret = args.shift()
@@ -143,6 +145,11 @@ async function main(config: DenonConfig, args: Array<string>) {
 		} else if (arg == '--string' || arg == '-s') {
 			let key = shift()
 			opts[key] = Code.value(shift())
+		} else if (arg == '--bool' || arg == '-b') {
+			let key = shift()
+			const value = shift()
+			const bool = notNull(`boolean(${value})`, bools[value])
+			opts[key] = Code.value(bool)
 		} else if (arg == '--env') {
 			let key = shift()
 			let envKey = shift()

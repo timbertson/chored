@@ -1,7 +1,8 @@
 import notNull from './notNull.ts'
 import { run } from './cmd.ts'
 import { FS, DenoFS } from './fsImpl.ts';
-import { walk, WalkOptions as DenoWalkOptions } from './walk.ts'
+import { walk } from './walk.ts'
+import { Version } from './version.ts'
 /*
  * parse imports
  *
@@ -16,7 +17,7 @@ import { walk, WalkOptions as DenoWalkOptions } from './walk.ts'
 
 interface Source {
 	cacheId(): string,
-	resolve(): Promise<string|null>
+	resolve(verbose: boolean): Promise<string|null>
 }
 
 export interface GithubImport {
@@ -51,14 +52,14 @@ export class GithubSource implements Source {
 		return this.addSpec(`${imp.prefix}/${imp.owner}/${imp.repo}/${version}/${imp.path}`)
 	}
 	
-	async resolve(): Promise<string|null> {
+	async resolve(verbose: boolean): Promise<string|null> {
 		// TODO: use https if there's known creds, otherwise ssh?
-		const repo = `git@github.com:${this.imp.owner}/${this.imp.repo}.git}`
-		return this.resolveFrom(repo)
+		const repo = `git@github.com:${this.imp.owner}/${this.imp.repo}.git`
+		return this.resolveFrom(repo, verbose)
 	}
 
-	async resolveFrom(repo: string): Promise<string|null> {
-		const latest = await GithubSource.resolveLatest(repo, this.imp.spec)
+	async resolveFrom(repo: string, verbose: boolean): Promise<string|null> {
+		const latest = await GithubSource.resolveLatest(repo, this.imp.spec, verbose)
 		if (latest === null || latest === this.imp.version) {
 			// not found or unchanged
 			return null
@@ -66,7 +67,7 @@ export class GithubSource implements Source {
 		return this.formatVersion(latest)
 	}
 	
-	static async resolveLatest(repo: string, ref: string | null): Promise<string|null> {
+	static async resolveLatest(repo: string, ref: string | null, verbose: boolean): Promise<string|null> {
 		let refs: Array<Ref> = []
 		const refFilter = ref || 'v*'
 		function processLine(line: string) {
@@ -84,11 +85,14 @@ export class GithubSource implements Source {
 		}
 		cmd.push(repo, refFilter)
 
-		await run(cmd, { stdout: processLine, printCommand: false })
+		await run(cmd, { stdout: processLine, printCommand: verbose })
+		if (verbose) {
+			console.log(`[refs]: ${refs.length} ${repo}`)
+		}
 		if (refs.length == 0) {
 			return null
 		}
-		if (ref != null && !isWildcard) {
+		if (!isWildcard) {
 			refs = refs.filter(r => r.name === ref)
 			if (refs.length == 0) {
 				console.warn(`WARN: no matches for '${ref}' in ${repo}`)
@@ -97,10 +101,29 @@ export class GithubSource implements Source {
 				console.warn(`WARN: ${refs.length} matches for '${ref}' in ${repo}`)
 			}
 			return refs[0].commit
-		} else {
-			// TODO version-sort
-			return refs.length > 0 ? refs[refs.length-1].commit : null
 		}
+
+		if (refs.length <= 1) {
+			return refs[0]?.commit
+		}
+
+		// at least two refs
+		const versions = (refs
+			.flatMap((ref: Ref) => {
+				const v = Version.parse(ref.name)
+				return v === null ? [] : [{ v, commit: ref.commit }]
+			})
+		)
+		if (verbose) {
+			console.log(`[parsed versions]: ${versions.length} ${repo}`)
+		}
+		if (versions.length == 0) {
+			console.warn(`WARN: no versions found in refs: ${JSON.stringify(refs.map(r => r.name))}`)
+			return null
+		}
+
+		versions.sort((a, b) => Version.compare(a.v, b.v))
+		return versions[versions.length-1].commit
 	}
 }
 
@@ -111,8 +134,14 @@ export interface Ref {
 
 export function parseRef(line: string): Ref {
 	let [commit, name] = line.split('\t', 2)
-	// remove refs/heads, refs/tags, etc
-	name = name.replace(/^refs\/[^/]+\//, '')
+	
+	// without refs/heads, refs/tags, etc
+	const shortName = name.replace(/^refs\/[^/]+\//, '')
+
+	if (name.startsWith('refs/tags/')) {
+		// assume immutable; use the friendly name
+		commit = shortName
+	}
 	return { commit, name }
 }
 
@@ -141,6 +170,7 @@ type AsyncReplacer = (url: string) => Promise<string>
 
 export class Bumper {
 	private static dot = new TextEncoder().encode('.')
+	verbose: boolean = false
 
 	private fs: FS
 	private cache: { [index: string]: Promise<string|null> } = {}
@@ -163,20 +193,24 @@ export class Bumper {
 		const id = source.cacheId()
 		let cached = this.cache[id]
 		if (cached == null) {
-			cached = this.cache[id] = source.resolve().then(r => {
+			cached = this.cache[id] = source.resolve(this.verbose).then(r => {
 				if (r !== null) {
 					this.changeCount++
 				}
 				return r
 			})
 			this.fetchCount++
-			await Deno.stdout.write(Bumper.dot)
+			if (this.verbose) {
+				console.warn(`[fetch] ${id}`)
+			} else {
+				await Deno.stdout.write(Bumper.dot)
+			}
 		}
 		return cached
 	}
 
 	summarize() {
-		console.log(`\nUpdated ${this.changeCount} of ${this.fetchCount} remotes`)
+		console.log(`\n${this.fetchCount} remote imports found, ${this.changeCount} updated`)
 	}
 	
 	async bumpFile(path: string, replacer?: AsyncReplacer): Promise<boolean> {
@@ -217,12 +251,21 @@ export class Bumper {
 	}
 }
 
-export async function bump(roots: Array<string>, opts: WalkOptions, replacer?: AsyncReplacer): Promise<void> {
+export async function bump(roots: Array<string>, opts: WalkOptions): Promise<void> {
 	const work: Array<Promise<boolean>> = []
 	const bumper = new Bumper()
+	bumper.verbose = opts.verbose ?? false
 	for (const root of roots) {
-		for await (const entry of walk(root, { ... opts, followSymlinks: false, includeDirs: false })) {
-			work.push(bumper.bumpFile(entry.path, replacer))
+		const rootStat = await Deno.stat(root)
+		if (rootStat.isDirectory) {
+			for await (const entry of walk(root, { ... opts, followSymlinks: false, includeDirs: false })) {
+				if (opts.verbose === true) {
+					console.warn(`[bump] ${entry.path}`)
+				}
+				work.push(bumper.bumpFile(entry.path))
+			}
+		} else {
+			work.push(bumper.bumpFile(root))
 		}
 	}
 	await Promise.all(work)
@@ -233,4 +276,5 @@ export interface WalkOptions {
 	exts?: string[]
 	match?: RegExp[]
 	skip?: RegExp[]
+	verbose?: boolean
 }
