@@ -34,7 +34,7 @@ export function resolveEntrypoint(config: Config, main: Array<string>, fsOverrid
 	const expand = (f: string) => isURI(f) ? f : expandLocal(f)
 
 	if (main.length == 2) {
-		// definitely filename + function
+		// definitely module + function
 		return {
 			module: expand(main[0]),
 			fn: main[1]
@@ -104,7 +104,7 @@ export async function run(config: Config, main: Array<string>, opts: RunOpts) {
 	let compiled;
 	try {
 		await Deno.writeTextFile(tempFile, tsLiteral)
-		compiled = await import(tempFile);
+		compiled = await import('file://' + tempFile);
 	} finally {
 		await Deno.remove(tempFile)
 	}
