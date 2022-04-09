@@ -32,12 +32,12 @@ Deno.test('bump resolve branch', async () => {
 	assertEquals(resolved, url(testSha, spec))
 })
 
-Deno.test('bump resolve wildcard', async () => {
+Deno.test('bump resolve wildcard tag', async () => {
 	// override URLs to resolve from local repo
 	const spec = 'test-version-*'
 	const source = notNull(parseGH(url('SHA', spec)))
 	const resolved = await source.resolveFrom('.', false)
-	assertEquals(resolved, url(testSha, spec))
+	assertEquals(resolved, url('test-version-0.1.1', spec))
 })
 
 Deno.test('processImportURLs', async () => {

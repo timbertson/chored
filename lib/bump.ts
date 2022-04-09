@@ -93,14 +93,14 @@ export class GithubSource implements Source {
 			return null
 		}
 		if (!isWildcard) {
-			refs = refs.filter(r => r.name === ref)
-			if (refs.length == 0) {
-				console.warn(`WARN: no matches for '${ref}' in ${repo}`)
+			const matchingRefs = refs.filter(r => r.name === ref)
+			if (matchingRefs.length == 0) {
+				console.warn(`WARN: refs received from ${repo}, but none matched '${ref}'. Returned refs: ${JSON.stringify(refs)}`)
 				return null
-			} else if (refs.length > 1) {
-				console.warn(`WARN: ${refs.length} matches for '${ref}' in ${repo}`)
+			} else if (matchingRefs.length > 1) {
+				console.warn(`WARN: ${matchingRefs.length} matches for '${ref}' in ${repo}`)
 			}
-			return refs[0].commit
+			return matchingRefs[0].commit
 		}
 
 		if (refs.length <= 1) {
@@ -142,7 +142,7 @@ export function parseRef(line: string): Ref {
 		// assume immutable; use the friendly name
 		commit = shortName
 	}
-	return { commit, name }
+	return { commit, name: shortName }
 }
 
 export function parseGH(url: string): GithubSource | null {
