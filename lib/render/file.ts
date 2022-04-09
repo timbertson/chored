@@ -1,8 +1,8 @@
 // code for defining files (but not actually rendering them anywhere)
-import * as YAML from "../yamlStringify.ts"
+import * as YAML from "../util/yaml_stringify.ts"
 
-import { Writeable, BaseFile, TextFile, MARKER, join, renderHeaderLines  } from './fileInternal.ts'
-export { TextFile } from './fileInternal.ts'
+import { Writeable, BaseFile, TextFile, MARKER, join, renderHeaderLines } from './file_internal.ts'
+export { TextFile } from './file_internal.ts'
 export type { Writeable }
 
 type JSObj = { [index: string]: any }

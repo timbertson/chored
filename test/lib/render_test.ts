@@ -1,7 +1,7 @@
 import { assertEquals } from '../common.ts'
 import * as Render from '../../lib/render.ts'
-import { MARKER, writeMode, WriteableOpts } from '../../lib/render/fileInternal.ts'
-import { FakeFS } from '../../lib/fsImpl.ts'
+import { MARKER, writeMode, WriteableOpts } from '../../lib/render/file_internal.ts'
+import { FakeFS } from '../../lib/fs/impl.ts'
 
 function render(files: Array<Render.Writeable>, fs: FakeFS): Promise<void> {
 	return Render.render(files, {}, fs)

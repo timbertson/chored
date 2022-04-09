@@ -1,5 +1,5 @@
-import { FS, DenoFS } from './lib/fsImpl.ts'
-import notNull from './lib/notNull.ts'
+import { FS, DenoFS } from './lib/fs/impl.ts'
+import notNull from './lib/util/not_null.ts'
 
 interface Code {
 	tsLiteral: string
@@ -7,7 +7,7 @@ interface Code {
 
 const Code = {
 	env: (key: string): Code => {
-		notNull(key, Deno.env.get(key))
+		notNull(Deno.env.get(key), key)
 		return { tsLiteral: `Deno.env.get(${JSON.stringify(key)}) as string` }
 	},
 	value: (v: any): Code => {
@@ -148,7 +148,7 @@ async function main(config: DenonConfig, args: Array<string>) {
 		} else if (arg == '--bool' || arg == '-b') {
 			let key = shift()
 			const value = shift()
-			const bool = notNull(`boolean(${value})`, bools[value])
+			const bool = notNull(bools[value], `boolean(${value})`)
 			opts[key] = Code.value(bool)
 		} else if (arg == '--env') {
 			let key = shift()

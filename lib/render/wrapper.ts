@@ -55,7 +55,7 @@ _main "$@"
 `.trim()
 }
 
-export function denonBinText(opts: Options) {
+export function wrapperText(opts: Options) {
 	return makeScript(`
 export DENO
 export DENON_TASKS="$PWD/denon-tasks"
@@ -87,5 +87,5 @@ exec "$DENO" run "\${DENO_ARGS[@]}" "\${BOOTSTRAP_OVERRIDE:-$BOOTSTRAP}"
 }
 
 export function wrapperScript(opts: Options) {
-	return new ExecutableFile("denon", denonBinText(opts))
+	return new ExecutableFile("denon", wrapperText(opts))
 }

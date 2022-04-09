@@ -1,5 +1,5 @@
 import { assertEquals, assertThrows } from './common.ts'
-import { FakeFS } from '../lib/fsImpl.ts'
+import { FakeFS } from '../lib/fs/impl.ts'
 import { run } from '../lib/cmd.ts'
 import * as Main from '../main.ts'
 

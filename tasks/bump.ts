@@ -1,4 +1,5 @@
 import { WalkOptions, bump } from '../lib/bump.ts'
+import merge from '../lib/util/shallow_merge.ts'
 
 export type Options = WalkOptions & {
 	args?: Array<string>
@@ -10,6 +11,11 @@ export const defaultOptions = {
 	args: ['.'],
 }
 
-export async function main(opts: Options) {
-	await bump(opts.args || ['.'], { ...defaultOptions, ...opts })
+export function bumpWith(extraDefaults: Options): (_: Options) => Promise<void> {
+	return function(opts: Options): Promise<void> {
+		const merged = merge(defaultOptions, extraDefaults, opts)
+		return bump(merged.args || ['.'], merged)
+	}
 }
+
+export const main: (opts: Options) => Promise<void> = bumpWith({})

@@ -1,7 +1,7 @@
 import { assertEquals } from '../common.ts'
-import notNull from '../../lib/notNull.ts'
+import notNull from '../../lib/util/not_null.ts'
 import { Bumper, parseGH } from '../../lib/bump.ts'
-import { FakeFS } from '../../lib/fsImpl.ts'
+import { FakeFS } from '../../lib/fs/impl.ts'
 
 const url = (r: string, spec?: string) => {
 	const base = `https://raw.githubusercontent.com/timbertson/dhall-ci/${r}/Meta/package.dhall`
@@ -27,16 +27,16 @@ const testSha = '7fa1accd89e45af5c7e60f904d9710c9f4024315'
 Deno.test('bump resolve branch', async () => {
 	// override URLs to resolve from local repo
 	const spec = 'test-branch-1'
-	const source = notNull('parsed', parseGH(url('SHA', spec)))
-	const resolved = await source.resolveFrom('.')
+	const source = notNull(parseGH(url('SHA', spec)))
+	const resolved = await source.resolveFrom('.', false)
 	assertEquals(resolved, url(testSha, spec))
 })
 
 Deno.test('bump resolve wildcard', async () => {
 	// override URLs to resolve from local repo
 	const spec = 'test-version-*'
-	const source = notNull('parsed', parseGH(url('SHA', spec)))
-	const resolved = await source.resolveFrom('.')
+	const source = notNull(parseGH(url('SHA', spec)))
+	const resolved = await source.resolveFrom('.', false)
 	assertEquals(resolved, url(testSha, spec))
 })
 

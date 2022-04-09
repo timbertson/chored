@@ -1,6 +1,6 @@
-import notNull from './notNull.ts'
+import notNull from './util/not_null.ts'
 import { run } from './cmd.ts'
-import { FS, DenoFS } from './fsImpl.ts';
+import { FS, DenoFS } from './fs/impl.ts';
 import { walk } from './walk.ts'
 import { Version } from './version.ts'
 /*
@@ -150,12 +150,12 @@ export function parseGH(url: string): GithubSource | null {
 	if (gh !== null) {
 		const [_match, prefix, owner, repo, version, path, _hash, spec] = gh
 		return new GithubSource({
-			owner: notNull('owner', owner),
-			repo: notNull('repo', repo),
-			prefix: notNull('prefix', prefix),
-			version: notNull('version', version),
+			owner: notNull(owner),
+			repo: notNull(repo),
+			prefix: notNull(prefix),
+			version: notNull(version),
 			spec: spec ? spec : null,
-			path: notNull('path', path),
+			path: notNull(path),
 		})
 	}
 	

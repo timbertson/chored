@@ -1,6 +1,6 @@
 import { readLines } from "https://deno.land/std@0.133.0/io/buffer.ts"
 
-import notNull from './notNull.ts'
+import notNull from './util/not_null.ts'
 
 export type Stdio = 'inherit' | 'discard' | 'string' | ((line: string) => void)
 
@@ -15,6 +15,7 @@ export interface RunOpts {
 	stdout?: Stdio,
 	stderr?: 'discard',
 	cwd?: string,
+	fatal?: boolean,
 }
 
 type DenoStdio = "inherit" | "piped" | "null" | number
@@ -30,7 +31,7 @@ async function readAction(output: OutputDest, p: Deno.Process) {
 
 function pipeAction(fn: (line: string) => void): OutputAction {
 	return async function(output: OutputDest, p: Deno.Process) {
-		for await (const line of readLines(notNull("stdout", p.stdout))) {
+		for await (const line of readLines(notNull(p.stdout))) {
 			fn(line)
 		}
 		p.stdout?.close()
@@ -77,6 +78,10 @@ export async function run(cmd: Array<string>, opts?: RunOpts): Promise<RunResult
 	const status = await p.status()
 	p.close()
 	if (!opts?.allowFailure && !status.success) {
+		if (opts?.fatal === true) {
+			// terminate without stacktrace
+			Deno.exit(status.code)
+		}
 		throw new Error(`Command \`${cmd[0]}\` failed with status ${status.code}`)
 	}
 	return { output: ret.output, status }
@@ -104,5 +109,5 @@ export async function runOutput(cmd: Array<string>, opts?: RunOpts): Promise<str
 		...opts,
 		stdout: 'string',
 	})
-	return notNull('process output', p.output)
+	return notNull(p.output, 'process output')
 }
