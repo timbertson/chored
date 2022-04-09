@@ -54,6 +54,7 @@ export class GithubSource implements Source {
 	
 	async resolve(verbose: boolean): Promise<string|null> {
 		// TODO: use https if there's known creds, otherwise ssh?
+		// TODO: reuse deno's credentials system for transparently accessing private repos
 		const repo = `git@github.com:${this.imp.owner}/${this.imp.repo}.git`
 		return this.resolveFrom(repo, verbose)
 	}

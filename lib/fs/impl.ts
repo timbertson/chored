@@ -81,7 +81,7 @@ export class FakeFS implements FS {
 	}
 
 	readTextFile(path: string): Promise<string> {
-		// TODO: normalize
+		// TODO: normalize paths?
 		const contents = this.files[path]
 		if (contents == null) {
 			throw new Deno.errors.NotFound(path)

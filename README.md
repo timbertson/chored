@@ -1,52 +1,12 @@
 # Chored
 
-Chores, sorted.
+Chores, **sorted**.
 
-`chored` lets you share chore definitions and code between many repositories. Built on [`deno`][] with Typescript, it requires zero-installation and has lightweight, on-demand dependencies.
+`chored` lets you share chore definitions and code between many repositories. Built on [`deno`][deno] with Typescript, it requires zero-installation and has lightweight, on-demand dependencies.
 
-You can use it for anything, but it's got first-class support for managing CI / CD files and chores (tasks):
+You can use it for anything, but it's built primarily to solve the problem of CI/CD reuse between repositories.
 
- - Generate (and update!) files from higher level abstractions:
-   - Github Action workflows
-   - Dockerfiles
-   - .gitattributes
-   - Kubernetes manifests
-   - arbitrary tool configurations (linters, compilers, build tools, etc)
- - Automatically bump remote typescript dependencies (for github and deno land)
-
-Chored is still experimental, it probably doesn't do what you want yet.
-
-[deno]: https://deno.land/
-
----
-
-# Installation
-
-TODO
-
-# Running a third-party chore
-
-TODO
-
-# Creating your own choredef
-
-Choredefs are simply functions that accept a single `options` argument. Export a `main` function in a file under `choredefs/`, boom you've made a chore with that filename.
-
-Instead of running a third-party chore directly, it's usually more convenient to add an alias. e.g. create `choredefs/greet.ts` containing:
-
-```ts
-export * from 'TODO'
-```
-
-You can also import the third party chore but expose a wrapper function, which passes options specific to your project, for example.
-
-```ts
-import { greet } from 'TODO'
-```
-
-# Dependency granularity
-
-Since it's built on [`deno`][], remote dependencies are simply typescript `imports`, and they're fetched only when first used - if you don't import a module, its dependencies don't need to be downloaded.
+**Chored is still experimental, it probably doesn't do what you want yet.**
 
 # Chored aims to solve problems with...
 
@@ -56,29 +16,34 @@ Since it's built on [`deno`][], remote dependencies are simply typescript `impor
 
 **Reusable development chores**: many languages have a kind of task runner (rake, npm scripts, etc). They usually have ways to share common tasks, but they're usually heavyweight (publish a package). With `chored`, sharing a chore is as simple as writing its URL in an `import` statement.
 
+**Ad-hoc shell scripts**: I've written plenty of project-specific shell scripts because bash is ubiquitous. But with `chored`, you've got a modern typescript runtime available and ready.
+
 **CI lock-in**: most forms of re-use (e.g. Githb Actions) are tied to a vendor. If you have a better form of abstraction (like a real programming language), you don't need to invest in vendor-specific form of reuse (defining and referencing Github Actions).
 
 **CI spaghetti-code**: we used to struggle with "works on my machine", now it's often "only works in CI". When CI steps are a thin wrapper around chores, we have the ability to run (and test!) that same code on developer machines. It won't magically make your environment consistent between dev and CI, but it can give you the tooling to manage that better.
 
-# Features
 
-## Filling the CI/CD YAML Sandwich
+# Getting started
 
-YAML and Javascript, that seems to be what the world has come to :shrug:
+```sh
+curl -sSL https://raw.githubusercontent.com/timbertson/chored/main/install.sh | bash
+```
 
-The `render` system contains functionality for declaratively specifying a set of generated files (typically YAML), and writing them to the filesystem. This takes inspiration from [projen](https://github.com/projen/projen), although it's much more minimal.
+This will create a couple of `choredefs/*.ts` in the current directory, then rnu the `render` chore to produce:
+ - `chored` wrapper scrpt
+ - `.gitattributes` metadata file
 
-Using this, you can run a `chored` function to locally generate YAML files for github actions, and then those YAML files can run more `chored` functions from your CI. Keeping your CI actions in `chored` functions means you can also run them from your local machine, or a Kubernetes job, or wherever.
+If you don't already have `deno` available, it will be downloaded into `~/.cache/chored`
 
-## Utility scripts & glue
+### Running a third-party chore
 
-Often these end up written in bash because it's always there. With chored, you've got the full power of typescript and [deno], through a ~100-line wrapper script committed in-repo.
+```sh
+./chored https://raw.githubusercontent.com/timbertson/chored/main/choredefs/greet.ts --string name anonymous
+```
 
-## Choredefs
+### Creating your own chores
 
-Writing a CLI is tedious. Calling a function is easy. Chored runs a function accepting a single `options` argument. You can use `--string foo bar` to set properties on that single options argument.
-
-It looks like this, for example:
+Chores are simply functions that accept a single `options` argument. Export a `main` function in a file under `choredefs/` and boom - you've made a chore with that filename:
 
 ```ts
 // choredefs/greet.ts
@@ -88,48 +53,68 @@ export function main(opts: { name: string, home: string }) {
 ```
 
 ```sh
-$ ./chored greet --string name "Tim" --env home HOME
+$ ./chored greet --name=Tim --env home=HOME
 ```
 
 You can put multiple functions in the one file, by passing the function name after the chore name (e.g. `./chored greet dev` would run the `dev` function in `choredefs/greet.ts`).
 
 `--string foo bar` and `--bool someFeature true` also have shorthands, e.g. `--foo=bar` and `--someFeature`
 
-# Pros:
+### Chore aliases
 
-### Mainstream language
+Instead of running a third-party chore directly, it's usually more convenient to add an alias. e.g. create `choredefs/greet.ts` containing:
 
-Typescript, it's a whole thing!
+```ts
+export * from 'https://raw.githubusercontent.com/timbertson/chored/main/choredefs/greet.ts'
+```
 
-### Lightweight code reuse
+You can also import the third party chore but expose a wrapper function, which passes options specific to your project, for example.
 
-It doesn't get easier than "import code from the internet"
+```ts
+import { main as greet } from 'https://raw.githubusercontent.com/timbertson/chored/main/choredefs/greet.ts'
 
-### Lightweight chore definitions
+// I don't know why you want to hardcode the user's name, but that's examples for you...
+export function main(opts: {}) {
+	return greet({ name: "tim" })
+}
+```
 
-A chore is just a function
+### Dependency managament
 
-### Static typing
+Since it's built on [`deno`][deno], remote dependencies are simply typescript `imports`, and they're fetched only on first use - if you don't run a module, its dependencies don't need to be downloaded.
 
-Missed out some options? Importing an incompatible version of a library? Get a type error upfront instead of an obscure runtime bug.
+In almost all cases, you should lock a dependency to a concrete version - a release tag or commit, rather than a branch name. To help with this, the builtin `bump` action respects a branch (or wildcard tag) placed in the URL anchor.
 
-# Cons:
+So you can write:
 
-### Size:
+```ts
+import { greet } from 'https://raw.githubusercontent.com/timbertson/chored/main/choredefs/greet.ts#main'
+```
 
-`deno` isn't tiny; it's an 80mb binary (when decompressed). It's reused across invocations of course, but if you run it on ephemeral VMs that won't help you.
+..and then run `./chored bump`. That'll replace `main` in the URL with the current cmmit SHA on that branch. The `#main` will remain, so that it knows which branch to track on future runs.
 
-### Niche:
+You can also use a wildcard for tags, e.g. `#v1.2.*` for a crude emulation of semver.
 
-Typescript is incredibly mainstream, but most people use it with `node`. `deno`'s flavour has some pecliarities that may make reuse and IDE integration less than perfect.
+# Design tradeoffs in `chored`:
 
-### Lack of automated dependency updates:
+### Pros:
 
-The downside of "import from the internet" is that there's no easy way to bump dependencies to the latest version, because you'd have to understand arbitrary URL structures and also figure out how to even fid out what the "latest" is.
+- **Mainstream language**: Typescript, maybe you've hard of it?
+- **lightweight code reuse**: It doesn't get easier than "import code from the internet"
+- **Lightweight chore definitions**: A chore is just a function, so they're easy to write and compose
+- **Static typing**: Missed out some options? Importing an incompatible version of a library? Get a type error upfront instead of an obscure runtime bug after you've published half a relese.
 
-This is a general problem with `deno`, so I'm not the only one interested in a solution. There's probably something hacky we can do for a few well-known hosts.
+### Cons:
+
+- **Size:** `deno` isn't tiny; it's an 80mb binary (when decompressed). It's reused across invocations of course, but if you run it on ephemeral VMs that won't help you.
+- **Niche:** Typescript is incredibly mainstream, but most people use it with `node`. `deno`'s flavour has some pecliarities that may make tooling, code reuse and IDE integration harder.
+- **Startup time:** By design, every `chored` invocation is typechecked. This isn't instantaneous, and means that things like tab completion may require tradeoffs to keep them snappy.
+
+---
 
 # Comparisons:
+
+Chored isn't the first project of it's kind, heck it's the second project that I've personally authored to try and tame the problems with repetitive CI/CD.
 
 ### Projen
 
@@ -176,9 +161,7 @@ The main difference is that dhall-render only really handles file generation. Wh
  - less self-contained (it would need `node`, `npx` and a typescript compiler)
 
 
----
-
-## On zero-installation
+# A love letter to zero-installation
 
 I have a long history of appreciating systems which don't require _stateful_ management. That is, running (or building) a program shouldn't care what's on your system, it should just **do the right thing**. Systems supporting this mode of operation feel conceptually like you can just "run code from the internet", although obviously they have caching to ensure you only pay the cost of downloading a program once.
 
@@ -187,3 +170,5 @@ I have a long history of appreciating systems which don't require _stateful_ man
  - dhall
 
 Nix is the most mainstream of these, but it's also a big investment - you have to go all in. Deno is likely to be somewhat mainstream, and is very low investment, because you can (largely) just Run Some Typescript.
+
+[deno]: https://deno.land/

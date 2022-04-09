@@ -78,7 +78,7 @@ exec "$DENO" run "\${DENO_ARGS[@]}" "\${CHORED_MAIN:-$CHORED_MAIN_FALLBACK}" "$@
 
 export function bootstrapText() {
 	return makeScript(`
-BOOTSTRAP='https://TODO-PUBLIC-URL.example.com/'
+BOOTSTRAP='https://raw.githubusercontent.com/timbertson/chored/main/lib/bootstrap.ts'
 exec "$DENO" run "\${DENO_ARGS[@]}" "\${BOOTSTRAP_OVERRIDE:-$BOOTSTRAP}"
 `)
 }

@@ -35,7 +35,7 @@ _main() {
 
 	DENO_ARGS=(--unstable --allow-all)
 
-BOOTSTRAP='https://TODO-PUBLIC-URL.example.com/'
+BOOTSTRAP='https://raw.githubusercontent.com/timbertson/chored/main/lib/bootstrap.ts'
 exec "$DENO" run "${DENO_ARGS[@]}" "${BOOTSTRAP_OVERRIDE:-$BOOTSTRAP}"
 
 }

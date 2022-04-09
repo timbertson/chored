@@ -20,7 +20,7 @@ Deno.test("bootstrap", async () => {
 			return ret
 		}
 		assertEquals(readdir(testDir), ['.gitattributes', 'chored', 'choredefs'])
-		assertEquals(readdir(testDir + '/choredefs'), ['render.ts'])
+		assertEquals(readdir(testDir + '/choredefs'), ['index.ts', 'render.ts'])
 
 		// test the generated project runs
 		await run([`${testDir}/chored`, 'render'], {
