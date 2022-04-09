@@ -65,7 +65,7 @@ if [ -e "$LOCKFILE" ]; then
 	DENO_ARGS+=(--lock="$LOCKFILE")
 fi
 
-if [ "\${1:-}" = "--exec" ]; then
+if [ "\${1:-}" = "--deno" ]; then
 	shift
 	exec "$DENO" "$@"
 fi
@@ -84,5 +84,5 @@ exec "$DENO" run "\${DENO_ARGS[@]}" "\${BOOTSTRAP_OVERRIDE:-$BOOTSTRAP}"
 }
 
 export function wrapperScript(opts: Options) {
-	return new ExecutableFile("chored" ,wrapperText(opts))
+	return new ExecutableFile("chored", wrapperText(opts))
 }

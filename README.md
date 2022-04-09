@@ -108,7 +108,7 @@ You can also use a wildcard for tags, e.g. `#v1.2.*` for a crude emulation of se
 
 - **Size:** `deno` isn't tiny; it's an 80mb binary (when decompressed). It's reused across invocations of course, but if you run it on ephemeral VMs that won't help you.
 - **Niche:** Typescript is incredibly mainstream, but most people use it with `node`. `deno`'s flavour has some pecliarities that may make tooling, code reuse and IDE integration harder.
-- **Startup time:** By design, every `chored` invocation is typechecked. This isn't instantaneous, and means that things like tab completion may require tradeoffs to keep them snappy.
+- **Startup time:** By design, every chore invocation is typechecked. This isn't instantaneous, and means that things like tab completion may require tradeoffs to keep them snappy.
 
 ---
 

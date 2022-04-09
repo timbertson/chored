@@ -1,0 +1,7 @@
+./download.sh:
+	*.json
+	!package.json
+
+./compile.sh:
+	*.ts
+	!package.json

@@ -43,7 +43,7 @@ if [ -e "$LOCKFILE" ]; then
 	DENO_ARGS+=(--lock="$LOCKFILE")
 fi
 
-if [ "${1:-}" = "--exec" ]; then
+if [ "${1:-}" = "--deno" ]; then
 	shift
 	exec "$DENO" "$@"
 fi
