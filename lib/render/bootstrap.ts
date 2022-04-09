@@ -21,7 +21,7 @@ _main() {
 		DENO="$(which deno 2>/dev/null || true)"
 	fi
 	if [ -z "\${DENO:-}" ]; then
-		DENON_CACHE="\${DENON_CACHE:-$HOME/.cache/denon}"
+		CHORED_CACHE="\${CHORED_CACHE:-$HOME/.cache/chored}"
 		DENO_VERSION="\${DENO_VERSION:-${denoVersion}}"
 
 		PLATFORM_ARCH=""
@@ -36,7 +36,7 @@ _main() {
 				;;
 		esac
 		[ -n "$PLATFORM_ARCH" ]
-		DENO_DIR="$DENON_CACHE/$PLATFORM_ARCH-$DENO_VERSION/"
+		DENO_DIR="$CHORED_CACHE/$PLATFORM_ARCH-$DENO_VERSION/"
 		mkdir -p "$DENO_DIR"
 		DENO="$DENO_DIR/deno"
 		if [ ! -e "$DENO" ]; then
@@ -57,13 +57,10 @@ _main "$@"
 
 export function wrapperText(opts: Options) {
 	return makeScript(`
-export DENO
-export DENON_TASKS="$PWD/denon-tasks"
-
 here="$PWD"
 tmp="$TMPDIR"
 
-LOCKFILE="$DENON_TASKS/.lock.json"
+LOCKFILE="choredefs/.lock.json"
 if [ -e "$LOCKFILE" ]; then
 	DENO_ARGS+=(--lock="$LOCKFILE")
 fi
@@ -73,9 +70,9 @@ if [ "\${1:-}" = "--exec" ]; then
 	exec "$DENO" "$@"
 fi
 
-DENON_MAIN_FALLBACK='${opts.mainModule ?? mainModule}'
+CHORED_MAIN_FALLBACK='${opts.mainModule ?? mainModule}'
 
-exec "$DENO" run "\${DENO_ARGS[@]}" "\${DENON_MAIN:-$DENON_MAIN_FALLBACK}" "$@"
+exec "$DENO" run "\${DENO_ARGS[@]}" "\${CHORED_MAIN:-$CHORED_MAIN_FALLBACK}" "$@"
 `)
 }
 
@@ -87,5 +84,5 @@ exec "$DENO" run "\${DENO_ARGS[@]}" "\${BOOTSTRAP_OVERRIDE:-$BOOTSTRAP}"
 }
 
 export function wrapperScript(opts: Options) {
-	return new ExecutableFile("denon", wrapperText(opts))
+	return new ExecutableFile("chored" ,wrapperText(opts))
 }

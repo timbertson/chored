@@ -2,8 +2,8 @@
 import { FS, DenoFS, FSUtil } from './fs/impl.ts'
 import { Writeable, GitAttributes, GENERATED_ATTR, writeTo } from './render/file_internal.ts'
 export * from './render/file.ts'
-export { wrapperScript } from './render/wrapper.ts'
-import { wrapperScript } from './render/wrapper.ts'
+import { wrapperScript } from './render/bootstrap.ts'
+export { wrapperScript } from './render/bootstrap.ts'
 
 export type Options = {
 	gitattributesExtra?: Array<string>,

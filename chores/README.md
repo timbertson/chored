@@ -1,6 +1,6 @@
-# Reusable tasks
+# Reusable chores
 
-You can import and use these in your own repositories.
+You can import and use these in your own `choredefs/`.
 
 They make heavy use of helper funtionality in `../lib/`
 

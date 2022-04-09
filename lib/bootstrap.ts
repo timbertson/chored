@@ -13,16 +13,16 @@ export async function main(opts: {}) {
 }
 `
 
-const installPath = 'denon-tasks/render.ts'
+const installPath = 'choredefs/render.ts'
 export async function install() {
 	if (DenoFS.existsSync(installPath)) {
 		throw new Error(`path already exists, not overwriting: ${installPath}`)
 	}
 
 	console.log(`generating initial ${installPath}`)
-	await DenoFS.mkdirp('denon-tasks')
+	await DenoFS.mkdirp('choredefs')
 	await DenoFS.writeTextFile(installPath, renderTask)
-	const render = await import(Deno.cwd() + '/denon-tasks/render.ts')
+	const render = await import(Deno.cwd() + '/choredefs/render.ts')
 	console.log("Running initial render task ...")
 	await render.main({})
 }

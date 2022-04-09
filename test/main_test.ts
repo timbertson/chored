@@ -6,7 +6,7 @@ import * as Main from '../main.ts'
 Deno.test("bootstrap", async () => {
 	const here = Deno.cwd()
 	const bootstrapModule = `file://${here}/lib/bootstrap.ts`
-	const testDir = await Deno.makeTempDir({ prefix: 'denon-test-' })
+	const testDir = await Deno.makeTempDir({ prefix: 'chored-test-' })
 	try {
 		await run(['bash', '-c', `cat ${here}/install.sh | env BOOTSTRAP_OVERRIDE='${bootstrapModule}' bash`], {
 			cwd: testDir,
@@ -19,11 +19,11 @@ Deno.test("bootstrap", async () => {
 			ret.sort()
 			return ret
 		}
-		assertEquals(readdir(testDir), ['.gitattributes', 'denon', 'denon-tasks'])
-		assertEquals(readdir(testDir + '/denon-tasks'), ['render.ts'])
+		assertEquals(readdir(testDir), ['.gitattributes', 'chored', 'choredefs'])
+		assertEquals(readdir(testDir + '/choredefs'), ['render.ts'])
 
 		// test the generated project runs
-		await run([`${testDir}/denon`, 'render'], {
+		await run([`${testDir}/chored`, 'render'], {
 			cwd: testDir,
 			printCommand: false
 		})

@@ -15,7 +15,7 @@ const Code = {
 	}
 }
 
-interface DenonConfig {
+interface Config {
 	denoExe: string,
 	taskRoot: string,
 }
@@ -25,7 +25,7 @@ interface Entrypoint {
 	fn: string,
 }
 
-export function resolveEntrypoint(config: DenonConfig, main: Array<string>, fsOverride?: FS): Entrypoint {
+export function resolveEntrypoint(config: Config, main: Array<string>, fsOverride?: FS): Entrypoint {
 	const fs = fsOverride || DenoFS
 	// NOTE: should maybe support relative paths one day?
 	const expandLocal = (f: string) => `${config.taskRoot}/${f}.ts`
@@ -64,9 +64,9 @@ interface RunOpts {
 	[index: string]: Code
 }
 
-const lockPath = (config: DenonConfig) => `${config.taskRoot}/.lock.json`
+const lockPath = (config: Config) => `${config.taskRoot}/.lock.json`
 
-async function lockModules(config: DenonConfig, paths: Array<string>): Promise<void> {
+async function lockModules(config: Config, paths: Array<string>): Promise<void> {
 	console.log(`Locking ${paths.length} task modules -> ${lockPath(config)}`)
 	const p = Deno.run({ cmd:
 		[ config.denoExe, "cache", "--lock", lockPath(config), "--lock-write", import.meta.url, ...paths ]
@@ -77,7 +77,7 @@ async function lockModules(config: DenonConfig, paths: Array<string>): Promise<v
 	}
 }
 
-async function lock(config: DenonConfig) {
+async function lock(config: Config) {
 	const entries: Iterable<Deno.DirEntry> = Deno.readDirSync(config.taskRoot)
 	const modules = Array.from(entries).map(e => `${config.taskRoot}/${e.name}`).filter(p => p.endsWith(".ts"))
 	await lockModules(config, modules)
@@ -87,7 +87,7 @@ function isPromise(obj: any) {
 	return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
 }
 
-export async function run(config: DenonConfig, main: Array<string>, opts: RunOpts) {
+export async function run(config: Config, main: Array<string>, opts: RunOpts) {
 	let entrypoint = resolveEntrypoint(config, main)
 
 	let indent = "\t\t\t\t"
@@ -100,7 +100,7 @@ export async function run(config: DenonConfig, main: Array<string>, opts: RunOpt
 		}
 	`
 	// console.log(tsLiteral)
-	let tempFile = await Deno.makeTempFile({ prefix: "denon_", suffix: ".ts" })
+	let tempFile = await Deno.makeTempFile({ prefix: "chored_", suffix: ".ts" })
 	let compiled;
 	try {
 		await Deno.writeTextFile(tempFile, tsLiteral)
@@ -116,7 +116,7 @@ export async function run(config: DenonConfig, main: Array<string>, opts: RunOpt
 
 const bools: { [index: string]: boolean } = { true: true, false: false }
 
-async function main(config: DenonConfig, args: Array<string>) {
+async function main(config: Config, args: Array<string>) {
 	let shift = () => {
 		let ret = args.shift()
 		if (ret == null) {
@@ -182,10 +182,10 @@ async function main(config: DenonConfig, args: Array<string>) {
 	}
 }
 
-export function defaultConfig(): DenonConfig {
+export function defaultConfig(): Config {
 	return {
 		denoExe: Deno.execPath(),
-		taskRoot: Deno.env.get("DENON_TASKS") || "denon-tasks",
+		taskRoot: Deno.cwd() + '/choredefs',
 	}
 }
 

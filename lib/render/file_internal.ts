@@ -1,4 +1,4 @@
-export const MARKER = "NOTE: This file is generated" + " by denon"
+export const MARKER = "NOTE: This file is generated" + " by chored"
 const HEADER_LINES = [MARKER]
 
 export function renderHeaderLines(opts: { linePrefix: string, lineSuffix?: string|null }) {
@@ -94,7 +94,7 @@ export class TextFile extends BaseFile<string> implements Writeable {
 	}
 }
 
-export const GENERATED_ATTR = "denon-generated"
+export const GENERATED_ATTR = "chored-generated"
 export class GitAttributes extends DerivedFile {
 	static default = new GitAttributes([])
 

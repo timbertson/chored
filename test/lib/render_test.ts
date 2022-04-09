@@ -10,7 +10,7 @@ function render(files: Array<Render.Writeable>, fs: FakeFS): Promise<void> {
 Deno.test("render files", async () => {
 	const fs = new FakeFS()
 	fs.writeTextFile("previously-generated", "contents")
-	fs.writeTextFile(".gitattributes", "previously-generated linguist-generated denon-generated\nnonexistent denon-generated")
+	fs.writeTextFile(".gitattributes", "previously-generated linguist-generated chored-generated\nnonexistent chored-generated")
 	fs.writeTextFile("manual", "contents")
 	
 	await render([
@@ -18,20 +18,20 @@ Deno.test("render files", async () => {
 		new Render.RawFile("nested/generated", "contents"),
 	], fs)
 	
-	const attrLine = (path: string) => `${path} linguist-generated denon-generated`
+	const attrLine = (path: string) => `${path} linguist-generated chored-generated`
 	assertEquals(
 		fs.files['.gitattributes'],
 		[
 			`# ${MARKER}`,
 			"",
 			attrLine(".gitattributes"),
-			attrLine("denon"),
+			attrLine("chored"),
 			attrLine("generated"),
 			attrLine("nested/generated"),
 		].join("\n"))
 	
 	await fs.remove('.gitattributes')
-	await fs.remove('denon')
+	await fs.remove('chored')
 	assertEquals(
 		fs.files,
 		{
