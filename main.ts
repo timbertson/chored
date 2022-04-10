@@ -1,5 +1,6 @@
 import { FS, DenoFS } from './lib/fs/impl.ts'
 import notNull from './lib/util/not_null.ts'
+import { Config, defaultConfig } from './lib/chored_config.ts'
 
 interface Code {
 	tsLiteral: string
@@ -13,11 +14,6 @@ const Code = {
 	value: (v: any): Code => {
 		return { tsLiteral: JSON.stringify(v) }
 	}
-}
-
-interface Config {
-	denoExe: string,
-	taskRoot: string,
 }
 
 interface Entrypoint {
@@ -63,25 +59,6 @@ interface RunOpts {
 	[index: string]: Code
 }
 
-const lockPath = (config: Config) => `${config.taskRoot}/.lock.json`
-
-async function lockModules(config: Config, paths: Array<string>): Promise<void> {
-	console.log(`Locking ${paths.length} task modules -> ${lockPath(config)}`)
-	const p = Deno.run({ cmd:
-		[ config.denoExe, "cache", "--lock", lockPath(config), "--lock-write", import.meta.url, ...paths ]
-	})
-	let status = await p.status()
-	if(!status.success) {
-		throw new Error(`deno cache failed: ${status.code}`)
-	}
-}
-
-async function lock(config: Config) {
-	const entries: Iterable<Deno.DirEntry> = Deno.readDirSync(config.taskRoot)
-	const modules = Array.from(entries).map(e => `${config.taskRoot}/${e.name}`).filter(p => p.endsWith(".ts"))
-	await lockModules(config, modules)
-}
-
 function isPromise(obj: any) {
 	return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
 }
@@ -124,7 +101,6 @@ async function main(config: Config, args: Array<string>) {
 		return ret
 	}
 	
-	let action = 'run'
 	let main = []
 	let opts: { [index: string]: Code } = {}
 	while(true) {
@@ -137,11 +113,9 @@ async function main(config: Config, args: Array<string>) {
 		if (arg == null) {
 			break
 		}
-		if (arg == '--lock') {
-			action = 'lock'
-		} else if (arg == '--run') {
-			action = 'run'
-		} else if (arg == '--string' || arg == '-s') {
+		// TODO turn standard actions into implicit choredefs.
+		// Maybe even use explicit test of `index` to fallback on missing well-known chore
+		if (arg == '--string' || arg == '-s') {
 			let key = shift()
 			opts[key] = Code.value(shift())
 		} else if (arg == '--bool' || arg == '-b') {
@@ -164,30 +138,9 @@ async function main(config: Config, args: Array<string>) {
 		}
 	}
 	
-	switch (action) {
-		case 'run':
-			run(config, main, opts)
-			break
-
-		case 'lock':
-			if (main.length > 0) {
-				throw new Error("too many arguments")
-			}
-			lock(config)
-			break
-
-		default:
-			throw new Error("unknown action")
-	}
-}
-
-export function defaultConfig(): Config {
-	return {
-		denoExe: Deno.execPath(),
-		taskRoot: Deno.cwd() + '/choredefs',
-	}
+	run(config, main, opts)
 }
 
 if (import.meta.main) {
-	main(defaultConfig(), Deno.args.slice())
+	main(defaultConfig, Deno.args.slice())
 }

@@ -1,3 +1,2 @@
-import * as Bump from './bump.ts'
-export const bump = Bump.main
-export { Bump }
+export { main as bump } from './bump.ts'
+export { main as lock } from './lock.ts'

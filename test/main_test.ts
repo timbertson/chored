@@ -3,6 +3,7 @@ import { FakeFS } from '../lib/fs/impl.ts'
 import { run } from '../lib/cmd.ts'
 import withTempDir from '../lib/fs/with_temp_dir.ts'
 import * as Main from '../main.ts'
+import { defaultConfig } from '../lib/chored_config.ts'
 
 Deno.test("bootstrap", async () => {
 	const here = Deno.cwd()
@@ -31,9 +32,8 @@ Deno.test("bootstrap", async () => {
 })
 
 Deno.test("resolveEntrypoint", async () => {
-	const config = Main.defaultConfig()
-	const base = config.taskRoot
-	const resolve = (args: Array<string>) => Main.resolveEntrypoint(Main.defaultConfig(), args, fs)
+	const base = defaultConfig.taskRoot
+	const resolve = (args: Array<string>) => Main.resolveEntrypoint(defaultConfig, args, fs)
 
 	const fs = new FakeFS()
 	await fs.writeTextFile(`${base}/render.ts`, '')
@@ -41,7 +41,7 @@ Deno.test("resolveEntrypoint", async () => {
 	assertEquals(resolve(['render']), { fn: 'main', module: base + '/render.ts' })
 
 	// initially there's no index, so unknown actions are rejected
-	assertThrows(() => resolve(['foo']), undefined, "Couldn't find a typescript module for foo")
+	assertThrows(() => resolve(['foo']), undefined, "No such choredef: foo")
 
 	// with index, unknown action are assumed to be functions
 	await fs.writeTextFile(`${base}/index.ts`, '')

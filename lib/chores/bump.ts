@@ -1,5 +1,5 @@
-import { WalkOptions, bump } from '../lib/bump.ts'
-import merge from '../lib/util/shallow_merge.ts'
+import { WalkOptions, bump } from '../bump.ts'
+import merge from '../util/shallow_merge.ts'
 
 export type Options = WalkOptions & {
 	args?: Array<string>
