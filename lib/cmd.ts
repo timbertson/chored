@@ -2,81 +2,109 @@ import { readLines } from "https://deno.land/std@0.133.0/io/buffer.ts"
 
 import notNull from './util/not_null.ts'
 
-export type Stdio = 'inherit' | 'discard' | 'string' | ((line: string) => void)
+export type Stdio = 'inherit' | 'discard' | 'string' | 'printOnError' | ((line: string) => void)
 
 export interface RunResult {
-	output: string|null,
 	status: Deno.ProcessStatus,
+	output: string|null,
+	errOutput: string|null,
 }
 
 export interface RunOpts {
 	printCommand?: boolean,
 	allowFailure?: boolean,
 	stdout?: Stdio,
-	stderr?: 'discard',
+	stderr?: Stdio,
 	cwd?: string,
 	fatal?: boolean,
 }
 
 type DenoStdio = "inherit" | "piped" | "null" | number
 type OutputDest = { output: string|null }
+type StdioStream = "stdout" | "stderr"
 type OutputAction = (output: OutputDest, p: Deno.Process) => Promise<void>
+
+type OutputConfiguration = {
+	runOpt: DenoStdio,
+	action: OutputAction,
+}
+
 function noopAction(output: OutputDest, p: Deno.Process) {
 	return Promise.resolve()
 }
 
-async function readAction(output: OutputDest, p: Deno.Process) {
-	output.output = new TextDecoder().decode(await p.output()).replace(/\n$/, '')
+function readAction(stream: StdioStream): OutputAction {
+	return async function(output: OutputDest, p: Deno.Process) {
+		const bytes = stream === 'stderr' ? p.stderrOutput() : p.output()
+		output.output = new TextDecoder().decode(await bytes).replace(/\n$/, '')
+	}
 }
 
-function pipeAction(fn: (line: string) => void): OutputAction {
+function printOnErrorAction(stream: StdioStream): OutputAction {
 	return async function(output: OutputDest, p: Deno.Process) {
-		for await (const line of readLines(notNull(p.stdout))) {
+		await readAction(stream)(output, p)
+		if (!await (await p.status()).success) {
+			console.warn(output.output)
+		}
+	}
+}
+
+function pipeAction(stream: StdioStream, fn: (line: string) => void): OutputAction {
+	return async function(output: OutputDest, p: Deno.Process) {
+		const s = notNull(p[stream])
+		for await (const line of readLines(s)) {
 			fn(line)
 		}
-		p.stdout?.close()
+		s.close()
 	}
+}
+
+function parseStdio(stream: StdioStream, stdio: Stdio | null): OutputConfiguration {
+	const ret: OutputConfiguration = {
+		runOpt: 'inherit',
+		action: noopAction,
+	}
+	if (typeof(stdio) === 'function') {
+		ret.runOpt = 'piped'
+		ret.action = pipeAction(stream, stdio)
+	} else if (stdio === 'discard') {
+		ret.runOpt = 'null'
+	} else if (stdio === 'inherit') {
+		ret.runOpt = 'inherit'
+	} else if (stdio === 'string') {
+		ret.runOpt = 'piped'
+		ret.action = readAction(stream)
+	} else if (stdio === 'printOnError') {
+		ret.runOpt = 'piped'
+		ret.action = printOnErrorAction(stream)
+	}
+	return ret
 }
 
 export async function run(cmd: Array<string>, opts?: RunOpts): Promise<RunResult> {
 	if (opts?.printCommand !== false) {
 		console.warn(' + ' + cmd.join(' '))
 	}
-	let stdout: DenoStdio = 'inherit'
-	let stderr: DenoStdio = 'inherit'
-	let action: OutputAction = noopAction
-	
-	if (opts?.stdout) {
-		const out = opts.stdout
-		if (typeof(out) === 'function') {
-			stdout = 'piped'
-			action = pipeAction(out)
-		} else if (out === 'discard') {
-			stdout = 'null'
-		} else if (out === 'inherit') {
-			stdout = 'inherit'
-		} else if (out === 'string') {
-			stdout = 'piped'
-			action = readAction
-		}
-	}
-
-	if (opts?.stderr === 'discard') {
-		stderr = 'null'
-	}
+	let stdout = parseStdio('stdout', opts?.stdout || null)
+	let stderr = parseStdio('stderr', opts?.stderr || null)
 
 	const runOpts = {
 		cmd: cmd,
-		stdout: stdout,
-		stderr: stderr,
+		stdout: stdout.runOpt,
+		stderr: stderr.runOpt,
 		cwd: opts?.cwd,
 	}
 
 	const p = Deno.run(runOpts)
-	const ret: OutputDest = { output: null }
-	await action(ret, p)
+	const stdoutBuf: OutputDest = { output: null }
+	const stderrBuf: OutputDest = { output: null }
+	await Promise.all([
+		stdout.action(stdoutBuf, p),
+		stderr.action(stderrBuf, p),
+	])
 	const status = await p.status()
 	p.close()
+
 	if (!opts?.allowFailure && !status.success) {
 		if (opts?.fatal === true) {
 			// terminate without stacktrace
@@ -84,7 +112,7 @@ export async function run(cmd: Array<string>, opts?: RunOpts): Promise<RunResult
 		}
 		throw new Error(`Command \`${cmd[0]}\` failed with status ${status.code}`)
 	}
-	return { output: ret.output, status }
+	return { output: stdoutBuf.output, errOutput: stderrBuf.output, status }
 }
 
 export async function runTest(cmd: Array<string>, opts?: RunOpts): Promise<boolean> {

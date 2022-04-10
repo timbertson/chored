@@ -49,8 +49,7 @@ export function resolveEntrypoint(config: Config, main: Array<string>, fsOverrid
 		} else {
 			let module = expandLocal("index")
 			if (!fs.existsSync(module)) {
-				let entryModule = expandLocal(entry)
-				throw new Error(`Couldn't find a typescript module for ${entry} (${entryModule}) or index (${module})`)
+				throw new Error(`No such choredef: ${entry}`)
 			}
 			return { fn: entry, module }
 		}

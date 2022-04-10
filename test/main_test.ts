@@ -1,13 +1,13 @@
 import { assertEquals, assertThrows } from './common.ts'
 import { FakeFS } from '../lib/fs/impl.ts'
 import { run } from '../lib/cmd.ts'
+import withTempDir from '../lib/fs/with_temp_dir.ts'
 import * as Main from '../main.ts'
 
 Deno.test("bootstrap", async () => {
 	const here = Deno.cwd()
 	const bootstrapModule = `file://${here}/lib/bootstrap.ts`
-	const testDir = await Deno.makeTempDir({ prefix: 'chored-test-' })
-	try {
+	await withTempDir({ prefix: 'chored-test-' }, async (testDir: string) => {
 		await run(['bash', '-c', `cat ${here}/install.sh | env BOOTSTRAP_OVERRIDE='${bootstrapModule}' bash`], {
 			cwd: testDir,
 			printCommand: false,
@@ -27,9 +27,7 @@ Deno.test("bootstrap", async () => {
 			cwd: testDir,
 			printCommand: false
 		})
-	} finally {
-		await run(['rm', '-rf', testDir], { printCommand: false })
-	}
+	})
 })
 
 Deno.test("resolveEntrypoint", async () => {
