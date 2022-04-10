@@ -21,4 +21,4 @@ jobs:
           path: ~/.cache/deno
           key: 'choredef-${{ hashFiles(''choredefs/**.ts'') }}'
       - name: Test and generate
-        run: ./chored precommit -b reqireClean true
+        run: ./chored precommit -b requireClean true
