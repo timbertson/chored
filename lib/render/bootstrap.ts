@@ -58,8 +58,6 @@ _main "$@"
 export function wrapperText(opts: Options) {
 	return makeScript(`
 here="$PWD"
-tmp="$TMPDIR"
-
 LOCKFILE="choredefs/.lock.json"
 if [ -e "$LOCKFILE" ]; then
 	DENO_ARGS+=(--lock="$LOCKFILE")

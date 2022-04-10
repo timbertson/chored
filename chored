@@ -36,8 +36,6 @@ _main() {
 	DENO_ARGS=(--unstable --allow-all)
 
 here="$PWD"
-tmp="$TMPDIR"
-
 LOCKFILE="choredefs/.lock.json"
 if [ -e "$LOCKFILE" ]; then
 	DENO_ARGS+=(--lock="$LOCKFILE")
