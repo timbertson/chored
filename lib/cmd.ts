@@ -17,6 +17,7 @@ export interface RunOpts {
 	stderr?: Stdio,
 	cwd?: string,
 	fatal?: boolean,
+	env?: { [index: string]: string },
 }
 
 type DenoStdio = "inherit" | "piped" | "null" | number
@@ -88,11 +89,12 @@ export async function run(cmd: Array<string>, opts?: RunOpts): Promise<RunResult
 	let stdout = parseStdio('stdout', opts?.stdout || null)
 	let stderr = parseStdio('stderr', opts?.stderr || null)
 
-	const runOpts = {
+	const runOpts: Deno.RunOptions = {
 		cmd: cmd,
 		stdout: stdout.runOpt,
 		stderr: stderr.runOpt,
 		cwd: opts?.cwd,
+		env: opts?.env,
 	}
 
 	const p = Deno.run(runOpts)

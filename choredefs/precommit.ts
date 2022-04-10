@@ -1,6 +1,6 @@
 import * as render from './render.ts'
 import * as test from './test.ts'
-import * as lock from '../lib/chores/lock.ts'
+import * as lock from '../lib/chore/lock.ts'
 import { requireCleanAround } from '../lib/git.ts'
 
 export async function main(opts: { requireClean?: boolean }) {

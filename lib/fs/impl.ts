@@ -4,7 +4,7 @@ export interface FS {
 	// subset of Deno interface
 	readTextFile(path: string): Promise<string>
 	writeTextFile(path: string, contents: string, options?: Deno.WriteFileOptions): Promise<void>
-	existsSync(path: string): boolean
+	exists(path: string): Promise<boolean>
 	chmod(path: string, mode: number): Promise<void>
 	mkdir(path: string): Promise<void>
 	remove(path: string): Promise<void>
@@ -37,7 +37,7 @@ export function FSUtil(fs: FS) {
 
 	const Self = {
 		mkdirp: async function(path: string): Promise<void> {
-			if (!fs.existsSync(path)) {
+			if (! await fs.exists(path)) {
 				await Self.mkdirp(dirname(path))
 				await fs.mkdir(path)
 			}
@@ -94,12 +94,12 @@ export class FakeFS implements FS {
 		return Promise.resolve()
 	}
 
-	existsSync(path: string): boolean {
-		return (path in this.files || path in this.dirs)
+	exists(path: string): Promise<boolean> {
+		return Promise.resolve(path in this.files || path in this.dirs)
 	}
 
-	remove(path: string): Promise<void> {
-		if (!this.existsSync(path)) {
+	async remove(path: string): Promise<void> {
+		if (! await this.exists(path)) {
 			throw new Deno.errors.NotFound(path)
 		}
 		delete this.files[path]
@@ -123,9 +123,9 @@ export class FakeFS implements FS {
 }
 
 const DenoFSImpl: FS = {
-	existsSync: function(filePath: string): boolean {
+	exists: async function(filePath: string): Promise<boolean> {
 		try {
-			Deno.lstatSync(filePath);
+			await Deno.lstat(filePath);
 			return true;
 		} catch (err) {
 			if (FSUtilPure.isNotFound(err)) {

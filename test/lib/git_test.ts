@@ -11,7 +11,7 @@ class Context {
 
 	constructor(dir: string) {
 		this.dir = dir
-		this.runOpts = { cwd: dir, printCommand: false, stdout: 'printOnError', stderr: 'printOnError' }
+		this.runOpts = { cwd: dir, printCommand: false, stdout: 'printOnError', stderr: 'printOnError', env: git.identityEnv(git.nobody) }
 		this.gitOpts = { gitDir: dir, printDiff: false, colorDiff: false }
 	}
 
@@ -20,6 +20,8 @@ class Context {
 		await this.write("b", "b initial")
 		await run(['git', 'init'], this.runOpts)
 		await run(['git', 'add', '.'], this.runOpts)
+		await run(['git', 'config', 'user.name', 'nobody'], this.runOpts)
+		await run(['git', 'config', 'user.email', 'nobody@localhost'], this.runOpts)
 		await run(['git', 'commit', '-m', 'initial'], this.runOpts)
 	}
 

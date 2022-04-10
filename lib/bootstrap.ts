@@ -14,29 +14,20 @@ export async function main(opts: {}) {
 }
 `
 
-const index = `
-// You can add your own functions in this module or create them as separate files.
-// To get you started, we'll include common tasks from chored (e.g. \`bump\`).
-export * from '${choreIndex}'
-`
-
 const renderPath = 'choredefs/render.ts'
-const indexPath = 'choredefs/index.ts'
 export async function install() {
 	console.log(`Generating initial choredefs ...`)
 	await DenoFS.mkdirp('choredefs')
 
 	const writeIfMissing = async (p: string, contents: string) => {
-		if (DenoFS.existsSync(p)) {
+		if (await DenoFS.exists(p)) {
 			console.warn(`WARN: path already exists, not overwriting: ${p}`)
 		} else {
-			console.warn(' - ' + p)
 			await DenoFS.writeTextFile(p, contents)
 		}
 	}
 	
 	await writeIfMissing(renderPath, renderTask)
-	await writeIfMissing(indexPath, index)
 
 	const render = await import(Deno.cwd() + '/' + renderPath)
 	console.log("Running render task ...")

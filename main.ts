@@ -1,6 +1,7 @@
 import { FS, DenoFS } from './lib/fs/impl.ts'
 import notNull from './lib/util/not_null.ts'
 import { Config, defaultConfig } from './lib/chored_config.ts'
+import replaceSuffix from './lib/util/replace_suffix.ts'
 
 interface Code {
 	tsLiteral: string
@@ -21,35 +22,47 @@ interface Entrypoint {
 	fn: string,
 }
 
-export function resolveEntrypoint(config: Config, main: Array<string>, fsOverride?: FS): Entrypoint {
+const builtinChores = () => replaceSuffix(import.meta.url, 'main.ts', 'lib/chore/builtins.ts')
+
+export async function resolveEntrypoint(config: Config, main: Array<string>, fsOverride?: FS): Promise<Entrypoint> {
 	const fs = fsOverride || DenoFS
-	// NOTE: should maybe support relative paths one day?
-	const expandLocal = (f: string) => `${config.taskRoot}/${f}.ts`
+	const localPath = (f: string) => `${config.taskRoot}/${f}.ts`
 	const isURI = (f: string) => f.lastIndexOf("://") !== -1
-	const isModule = (f: string) => isURI(f) || fs.existsSync(expandLocal(f))
-	const expand = (f: string) => isURI(f) ? f : expandLocal(f)
+	const isModule = async (f: string) => isURI(f) || await fs.exists(localPath(f))
+	const toURI = (f: string) => isURI(f) ? f : `file://${localPath(f)}`
 
 	if (main.length == 2) {
 		// definitely module + function
+		let [module, fn] = main
+		if (main[0] === '--builtin') {
+			module = builtinChores()
+		}
 		return {
-			module: expand(main[0]),
-			fn: main[1]
+			module: toURI(module),
+			fn,
 		}
 	} else if (main.length == 1) {
 		const entry = main[0]
-		if (isModule(entry)) {
+		
+		// it's a filename:
+		if (await isModule(entry)) {
 			return {
-				module: expand(entry),
-				fn: 'main'
+				module: toURI(entry),
+				fn: 'main',
 			}
 		} else {
-			let module = expandLocal("index")
-			if (!fs.existsSync(module)) {
-				throw new Error(`No such choredef: ${entry}`)
+			// might be filename, might be function in implicit main (index.ts)
+			// let index = expandLocal("index")
+			let moduleURI: string = builtinChores()
+			if (await isModule('index')) {
+				const indexURI = toURI('index')
+				const indexAPI: { [index: string]: any } = await import(indexURI)
+				if (entry in indexAPI) {
+					moduleURI = indexURI
+				}
 			}
-			return { fn: entry, module }
+			return { fn: entry, module: moduleURI }
 		}
-		// might be filename, might be function in implicit main (index.ts)
 	} else {
 		throw new Error(`invalid main: ${JSON.stringify(main)}`)
 	}
@@ -63,16 +76,19 @@ function isPromise(obj: any) {
 	return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
 }
 
-export async function run(config: Config, main: Array<string>, opts: RunOpts) {
-	let entrypoint = resolveEntrypoint(config, main)
+export async function run(config: Config, main: Array<string>, opts: RunOpts): Promise<any> {
+	let entrypoint = await resolveEntrypoint(config, main)
+	return runResolved(entrypoint, opts)
+}
 
+export async function runResolved(entrypoint: Entrypoint, opts: RunOpts): Promise<any> {
 	let indent = "\t\t\t\t"
 	let optsCode = `{\n${indent}` + Object.entries(opts).map(([k,v]) => `${k}: ${v.tsLiteral}`).join(`,\n${indent}`) + `\n${indent}}`
 
-	let tsLiteral = `
-		import { ${entrypoint.fn} } from ${JSON.stringify(entrypoint.module)}
-		export function run() {
-			${entrypoint.fn}(${optsCode})
+	const tsLiteral = `
+		import * as mod from ${JSON.stringify(entrypoint.module)}
+		export function _run() {
+			return mod['${entrypoint.fn}'](${optsCode})
 		}
 	`
 	// console.log(tsLiteral)
@@ -84,10 +100,8 @@ export async function run(config: Config, main: Array<string>, opts: RunOpts) {
 	} finally {
 		await Deno.remove(tempFile)
 	}
-	const result = compiled.run()
-	if (isPromise(result)) {
-		await result
-	}
+	const result = compiled._run()
+	return isPromise(result) ? await result : result
 }
 
 const bools: { [index: string]: boolean } = { true: true, false: false }
@@ -113,8 +127,6 @@ async function main(config: Config, args: Array<string>) {
 		if (arg == null) {
 			break
 		}
-		// TODO turn standard actions into implicit choredefs.
-		// Maybe even use explicit test of `index` to fallback on missing well-known chore
 		if (arg == '--string' || arg == '-s') {
 			let key = shift()
 			opts[key] = Code.value(shift())

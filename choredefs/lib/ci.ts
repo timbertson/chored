@@ -36,7 +36,7 @@ export const workflow: GH.GithubWorkflow = {
 				
 				{
 					name: "Test and generate",
-					run: './chored precommit -b requireClean true'
+					run: './chored precommit'
 				}
 			],
 		}

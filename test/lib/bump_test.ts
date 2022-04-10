@@ -2,9 +2,10 @@ import { assertEquals } from '../common.ts'
 import notNull from '../../lib/util/not_null.ts'
 import { Bumper, parseGH } from '../../lib/bump.ts'
 import { FakeFS } from '../../lib/fs/impl.ts'
+import { run } from '../../lib/cmd.ts'
 
 const url = (r: string, spec?: string) => {
-	const base = `https://raw.githubusercontent.com/timbertson/dhall-ci/${r}/Meta/package.dhall`
+	const base = `https://raw.githubusercontent.com/timbertson/chored/${r}/lib/README.md`
 	return spec ? base+'#'+spec : base
 }
 
@@ -13,21 +14,34 @@ Deno.test('bump parseGH', () => {
 	const updated = url('UPDATED')
 	assertEquals(parseGH(base)?.imp, {
 		owner: "timbertson",
-		repo: "dhall-ci",
+		repo: "chored",
 		prefix: "https://raw.githubusercontent.com",
 		version: "SHA",
 		spec: null,
-		path: "Meta/package.dhall"
+		path: "lib/README.md"
 	})
 	assertEquals(parseGH(base)?.formatVersion('UPDATED'), updated)
 	assertEquals(parseGH(url('SHA', 'ref'))?.formatVersion('UPDATED'), updated + '#ref')
 })
 
 const testSha = '7fa1accd89e45af5c7e60f904d9710c9f4024315'
+const testShaTag = 'test-version-0.1.1'
+
+// CI run s a shallow clone; so fetch just these
+async function fetchTestCommit() {
+	if (Deno.env.get('CI') === 'true') {
+		await run(['git', 'fetch', '--depth=1', 'origin', `+refs/tags/${testShaTag}:refs/tags/${testShaTag}`])
+	}
+}
+
 Deno.test('bump resolve branch', async () => {
 	// override URLs to resolve from local repo
 	const spec = 'test-branch-1'
 	const source = notNull(parseGH(url('SHA', spec)))
+
+	await fetchTestCommit()
+	await run(['git', 'branch', '--force', spec, testSha], { printCommand: false })
+	
 	const resolved = await source.resolveFrom('.', false)
 	assertEquals(resolved, url(testSha, spec))
 })
@@ -36,8 +50,10 @@ Deno.test('bump resolve wildcard tag', async () => {
 	// override URLs to resolve from local repo
 	const spec = 'test-version-*'
 	const source = notNull(parseGH(url('SHA', spec)))
+
+	await fetchTestCommit()
 	const resolved = await source.resolveFrom('.', false)
-	assertEquals(resolved, url('test-version-0.1.1', spec))
+	assertEquals(resolved, url(testShaTag, spec))
 })
 
 Deno.test('processImportURLs', async () => {

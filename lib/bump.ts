@@ -91,6 +91,7 @@ export class GithubSource implements Source {
 			console.log(`[refs]: ${refs.length} ${repo}`)
 		}
 		if (refs.length == 0) {
+			console.warn(`WARN: No '${refFilter}' refs present in ${repo}`)
 			return null
 		}
 		if (!isWildcard) {

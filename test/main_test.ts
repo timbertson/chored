@@ -1,9 +1,10 @@
-import { assertEquals, assertThrows } from './common.ts'
-import { FakeFS } from '../lib/fs/impl.ts'
+import { assertEquals, assertThrows, assertRejects } from './common.ts'
+import { DenoFS, FakeFS } from '../lib/fs/impl.ts'
 import { run } from '../lib/cmd.ts'
 import withTempDir from '../lib/fs/with_temp_dir.ts'
 import * as Main from '../main.ts'
-import { defaultConfig } from '../lib/chored_config.ts'
+import { Config, defaultConfig } from '../lib/chored_config.ts'
+import replaceSuffix from '../lib/util/replace_suffix.ts'
 
 Deno.test("bootstrap", async () => {
 	const here = Deno.cwd()
@@ -21,7 +22,7 @@ Deno.test("bootstrap", async () => {
 			return ret
 		}
 		assertEquals(readdir(testDir), ['.gitattributes', 'chored', 'choredefs'])
-		assertEquals(readdir(testDir + '/choredefs'), ['index.ts', 'render.ts'])
+		assertEquals(readdir(testDir + '/choredefs'), ['render.ts'])
 
 		// test the generated project runs
 		await run([`${testDir}/chored`, 'render'], {
@@ -31,20 +32,30 @@ Deno.test("bootstrap", async () => {
 	})
 })
 
-Deno.test("resolveEntrypoint", async () => {
-	const base = defaultConfig.taskRoot
-	const resolve = (args: Array<string>) => Main.resolveEntrypoint(defaultConfig, args, fs)
+Deno.test("run", () => withTempDir({}, async (dir) => {
+	await DenoFS.writeTextFile(`${dir}/a.ts`, `
+		export function main(opts: {}) { return "chore a!" }
+		export function async(opts: {}) { return Promise.resolve("chore a (async)!") }
+	`)
 
-	const fs = new FakeFS()
-	await fs.writeTextFile(`${base}/render.ts`, '')
+	await DenoFS.writeTextFile(`${dir}/index.ts`, `
+		export function b(opts: {}) { return "index b!" }
+	`)
 
-	assertEquals(resolve(['render']), { fn: 'main', module: base + '/render.ts' })
+	const moduleURI = (name: string) => `file://${dir}/${name}.ts`
+	const config: Config = { ...defaultConfig, taskRoot: dir }
 
-	// initially there's no index, so unknown actions are rejected
-	assertThrows(() => resolve(['foo']), undefined, "No such choredef: foo")
+	assertEquals(await Main.run(config, ['a'], {}), 'chore a!')
+	assertEquals(await Main.run(config, ['a', 'async'], {}), 'chore a (async)!')
 
-	// with index, unknown action are assumed to be functions
-	await fs.writeTextFile(`${base}/index.ts`, '')
-	assertEquals(resolve(['foo']), { fn: 'foo', module: base + '/index.ts' })
-	assertEquals(resolve(['foo', 'bar']), { fn: 'bar', module: base + '/foo.ts' })
-})
+	assertEquals(await Main.resolveEntrypoint(config, ['b']), {
+		module: moduleURI('index'), fn: 'b'
+	})
+	assertEquals(await Main.run(config, ['b'], {}), 'index b!')
+
+	// not present in index, fallback
+	assertEquals(await Main.resolveEntrypoint(config, ['c']), {
+		module: replaceSuffix(import.meta.url, 'test/main_test.ts', 'lib/chore/builtins.ts'),
+		fn: 'c'
+	})
+}))

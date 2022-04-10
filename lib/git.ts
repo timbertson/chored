@@ -2,8 +2,19 @@ import { run, RunOpts, RunResult } from './cmd.ts'
 import notNull from './util/not_null.ts'
 import merge from './util/shallow_merge.ts'
 
-export interface UncommittedOptions {
+export interface Identity {
+	name: string,
+	email: string,
+}
+
+export const nobody: Identity = { name: 'nobody', email: 'nobody@localhost' }
+
+export interface CommonOptions {
 	gitDir?: string,
+	identity?: Identity,
+}
+
+export interface UncommittedOptions extends CommonOptions {
 	includeUntracked?: boolean,
 	colorDiff?: boolean,
 }
@@ -16,6 +27,15 @@ export interface RequireCleanOptions extends UncommittedOptions {
 function failUnexpectedStatus(result: RunResult): string {
 	console.warn(result.errOutput)
 	throw new Error(`git command failed with status ${result.status.code}`)
+}
+
+export function identityEnv(identity: Identity): { [k: string]: string } {
+	return {
+		GIT_AUTHOR_NAME: identity.name,
+		GIT_AUTHOR_EMAIL: identity.email,
+		GIT_COMITTER_NAME: identity.name,
+		GIT_COMITTER_EMAIL: identity.email,
+	}
 }
 
 export async function uncommittedChanges(opts?: UncommittedOptions): Promise<string|null> {

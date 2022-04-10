@@ -1,1 +1,3 @@
-export * from '../lib/chores/index.ts'
+export function sample(opts: {}) {
+	console.log('sample!')
+}
