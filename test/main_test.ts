@@ -40,6 +40,7 @@ Deno.test("run", () => withTempDir({}, async (dir) => {
 
 	await DenoFS.writeTextFile(`${dir}/index.ts`, `
 		export function b(opts: {}) { return "index b!" }
+		export function main(opts: {}) { return "main!" }
 	`)
 
 	const moduleURI = (name: string) => `file://${dir}/${name}.ts`
@@ -52,6 +53,7 @@ Deno.test("run", () => withTempDir({}, async (dir) => {
 		module: moduleURI('index'), fn: 'b'
 	})
 	assertEquals(await Main.run(config, ['b'], {}), 'index b!')
+	assertEquals(await Main.run(config, [], {}), 'main!')
 
 	// not present in index, fallback
 	assertEquals(await Main.resolveEntrypoint(config, ['c']), {

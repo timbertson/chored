@@ -57,27 +57,28 @@ _main "$@"
 
 export function wrapperText(opts: Options) {
 	return makeScript(`
-here="$PWD"
-LOCKFILE="choredefs/.lock.json"
-if [ -e "$LOCKFILE" ]; then
-	DENO_ARGS+=(--lock="$LOCKFILE")
-fi
+	here="$PWD"
+	LOCKFILE="choredefs/.lock.json"
+	if [ -e "$LOCKFILE" ]; then
+		DENO_ARGS+=(--lock="$LOCKFILE")
+	fi
 
-if [ "\${1:-}" = "--deno" ]; then
-	shift
-	exec "$DENO" "$@"
-fi
+	if [ "\${1:-}" = "--deno" ]; then
+		shift
+		exec "$DENO" "$@"
+	fi
 
-CHORED_MAIN_FALLBACK='${opts.mainModule ?? mainModule}'
+	CHORED_MAIN_FALLBACK='${opts.mainModule ?? mainModule}'
 
-exec "$DENO" run "\${DENO_ARGS[@]}" "\${CHORED_MAIN:-$CHORED_MAIN_FALLBACK}" "$@"
+	exec "$DENO" run "\${DENO_ARGS[@]}" "\${CHORED_MAIN:-$CHORED_MAIN_FALLBACK}" "$@"
 `)
 }
 
 export function bootstrapText() {
 	return makeScript(`
-BOOTSTRAP='https://raw.githubusercontent.com/timbertson/chored/main/lib/bootstrap.ts'
-exec "$DENO" run "\${DENO_ARGS[@]}" "\${BOOTSTRAP_OVERRIDE:-$BOOTSTRAP}"
+	HEAD_SHA="$(git ls-remote https://github.com/timbertson/chored.git main | head -n 1 | cut -f 1)"
+	BOOTSTRAP='https://raw.githubusercontent.com/timbertson/chored/$HEAD_SHA/lib/bootstrap.ts'
+	exec "$DENO" run "\${DENO_ARGS[@]}" "\${BOOTSTRAP_OVERRIDE:-$BOOTSTRAP}"
 `)
 }
 

@@ -35,20 +35,20 @@ _main() {
 
 	DENO_ARGS=(--unstable --allow-all)
 
-here="$PWD"
-LOCKFILE="choredefs/.lock.json"
-if [ -e "$LOCKFILE" ]; then
-	DENO_ARGS+=(--lock="$LOCKFILE")
-fi
+	here="$PWD"
+	LOCKFILE="choredefs/.lock.json"
+	if [ -e "$LOCKFILE" ]; then
+		DENO_ARGS+=(--lock="$LOCKFILE")
+	fi
 
-if [ "${1:-}" = "--deno" ]; then
-	shift
-	exec "$DENO" "$@"
-fi
+	if [ "${1:-}" = "--deno" ]; then
+		shift
+		exec "$DENO" "$@"
+	fi
 
-CHORED_MAIN_FALLBACK='./main.ts'
+	CHORED_MAIN_FALLBACK='./main.ts'
 
-exec "$DENO" run "${DENO_ARGS[@]}" "${CHORED_MAIN:-$CHORED_MAIN_FALLBACK}" "$@"
+	exec "$DENO" run "${DENO_ARGS[@]}" "${CHORED_MAIN:-$CHORED_MAIN_FALLBACK}" "$@"
 
 }
 

@@ -2,10 +2,9 @@
 import { DenoFS } from './fs/impl.ts'
 
 const renderModule = import.meta.url.replace(/bootstrap.ts$/, 'render.ts')
-const choreIndex = import.meta.url.replace(/lib\/bootstrap.ts$/, 'chores/index.ts')
 
 const renderTask = `
-import { render, wrapperScript, JSONFile, YAMLFile } from '${renderModule}'
+import { render, wrapperScript, JSONFile, YAMLFile } from '${renderModule}#main'
 
 export async function main(opts: {}) {
 	render([
@@ -29,7 +28,7 @@ export async function install() {
 	
 	await writeIfMissing(renderPath, renderTask)
 
-	const render = await import(Deno.cwd() + '/' + renderPath)
+	const render = await import(`file://${Deno.cwd()}/${renderPath}`)
 	console.log("Running render task ...")
 	await render.main({})
 }

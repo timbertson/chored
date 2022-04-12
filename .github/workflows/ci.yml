@@ -10,15 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Cache deno
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/chored
-          key: 'deno-${{ runner.os }}-${{ hashFiles(''chored'') }}'
-      - name: Cache chore dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/deno
-          key: 'choredef-${{ hashFiles(''choredefs/**.ts'') }}'
+      - name: Cache
+        uses: timbertson/chored-init-action@main
       - name: Test and generate
         run: ./chored precommit

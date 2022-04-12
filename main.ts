@@ -30,6 +30,10 @@ export async function resolveEntrypoint(config: Config, main: Array<string>, fsO
 	const isURI = (f: string) => f.lastIndexOf("://") !== -1
 	const isModule = async (f: string) => isURI(f) || await fs.exists(localPath(f))
 	const toURI = (f: string) => isURI(f) ? f : `file://${localPath(f)}`
+	
+	if (main.length == 0) {
+		main = ['main']
+	}
 
 	if (main.length == 2) {
 		// definitely module + function
