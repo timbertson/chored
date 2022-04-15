@@ -1,6 +1,7 @@
-import { runOutput } from '../../../lib/cmd.ts'
+import { runOutput, run } from '../../../lib/cmd.ts'
 
 export default async function(n: string) {
+	await run(['git', 'log', '--graph', '-n', '4'])
 	const output = await runOutput(['git', 'name-rev', n])
 	const parts = output.trim().split(/\s+/)[1].split('/')
 	if (parts.length < 3) {
