@@ -4,7 +4,8 @@ import notNull from '../../../lib/util/not_null.ts'
 let fetched = false
 
 export default async function(n: string) {
-	// fight against shallow checkout
+	// we're verifying details with git history, so
+	// make sure we're not using a shallow clone
 	if (!fetched) {
 		await run(['git', 'fetch', '--unshallow'])
 		fetched = true
