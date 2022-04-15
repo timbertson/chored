@@ -14,12 +14,12 @@ jobs:
       - uses: timbertson/chored-setup@v1
       - name: precommit
         run: ./chored precommit
-      - name: test
+      - name: PR specific tests
         run: ./chored test --json "$OPTS"
         env:
           OPTS: '{"args":["test/lib/github/run_env_prtest_only.ts"]}'
         if: github.event_name == 'pull_request'
-      - name: test
+      - name: Push specific tests
         run: ./chored test --json "$OPTS"
         env:
           OPTS: '{"args":["test/lib/github/run_env_pushtest_only.ts"]}'

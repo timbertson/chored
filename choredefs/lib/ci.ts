@@ -7,11 +7,11 @@ export const workflow = ciWorkflow(
 	setupSteps().concat(
 		chore({ name: 'precommit' }),
 		merge(
-			chore({ name: 'test', opts: { args: ['test/lib/github/run_env_prtest_only.ts'] } }),
+			chore({ stepName: 'PR specific tests', name: 'test', opts: { args: ['test/lib/github/run_env_prtest_only.ts'] } }),
 			{ if: "github.event_name == 'pull_request'"}
 		),
 		merge(
-			chore({ name: 'test', opts: { args: ['test/lib/github/run_env_pushtest_only.ts'] } }),
+			chore({ stepName: 'Push specific tests', name: 'test', opts: { args: ['test/lib/github/run_env_pushtest_only.ts'] } }),
 			{ if: "github.event_name == 'push'"}
 		)
 	)

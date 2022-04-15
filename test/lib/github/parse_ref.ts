@@ -1,6 +1,10 @@
 import { runOutput, run } from '../../../lib/cmd.ts'
 
 export default async function(n: string) {
+	// fight against shallow checkout
+	const rev = (await runOutput(['git', 'rev-parse', 'HEAD'])).trim()
+	await run(['git', 'fetch', '--depth', '4', 'origin', rev])
+
 	await run(['git', 'log', '--graph', '-n', '4'])
 	const output = await runOutput(['git', 'name-rev', n])
 	const parts = output.trim().split(/\s+/)[1].split('/')
