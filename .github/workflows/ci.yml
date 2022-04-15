@@ -4,14 +4,25 @@
   push:
     branches:
       - main
-      - master
+      - ci-*
   pull_request: {}
 jobs:
   CI:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: timbertson/chored-init-action@v1
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup chored
+        uses: timbertson/chored-setup@v1
       - name: precommit
         run: ./chored precommit
-        env: {}
+      - name: PR specific tests
+        run: ./chored test --json "$OPTS"
+        env:
+          OPTS: '{"args":["test/lib/github/run_env_prtest_only.ts"]}'
+        if: github.event_name == 'pull_request'
+      - name: Push specific tests
+        run: ./chored test --json "$OPTS"
+        env:
+          OPTS: '{"args":["test/lib/github/run_env_pushtest_only.ts"]}'
+        if: github.event_name == 'push'

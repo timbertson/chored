@@ -6,6 +6,7 @@ export interface CheckoutOptions {
 
 export function checkout(opts?: CheckoutOptions): Step {
 	return {
+		name: 'Checkout',
 		uses: `actions/checkout@${opts?.version ?? 'v3'}`,
 	}
 }
@@ -16,6 +17,7 @@ export interface SetupStepOptions {
 
 export function setupStep(opts?: SetupStepOptions): Step {
 	return {
+		name: 'Setup chored',
 		uses: `timbertson/chored-setup@${opts?.version ?? 'v1'}`,
 	}
 }
@@ -31,7 +33,7 @@ export interface ChoreStep {
 	stepName?: string,
 	name: string,
 	module?: string | null,
-	opts?: { [k: string]: Value }
+	opts?: { [k: string]: Value | string[] }
 	envOpts?: { [k: string]: string }
 }
 
@@ -49,11 +51,15 @@ export function chore(opts: ChoreStep): Step {
 		args.push('--env', k, v)
 	}
 
-	const optValues: { [index: string]: Primitive } = {}
+	const optValues: { [index: string]: Primitive | string[] } = {}
 	const env: { [index: string]: Primitive } = {}
 
 	for (const [k, v] of Object.entries(opts.opts ?? {})) {
-		optValues[k] = encodeValue(v)
+		if (Array.isArray(v)) {
+			optValues[k] = v
+		} else {
+			optValues[k] = encodeValue(v)
+		}
 	}
 
 	const hasOpts = Object.keys(optValues).length > 0

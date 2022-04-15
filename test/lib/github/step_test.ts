@@ -2,9 +2,15 @@ import { assertEquals } from '../../common.ts'
 
 import * as Step from '../../../lib/github/step.ts'
 
-const defaultCheckout = { uses: 'actions/checkout@v3' }
+const defaultCheckout = {
+	name: 'Checkout',
+	uses: 'actions/checkout@v3'
+}
 
-const defaultSetup = { uses: 'timbertson/chored-setup@v1' }
+const defaultSetup = {
+	name: 'Setup chored',
+	uses: 'timbertson/chored-setup@v1'
+}
 
 Deno.test('checkout', () => {
 	assertEquals(Step.checkout(), defaultCheckout)
