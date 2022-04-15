@@ -11,7 +11,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: timbertson/chored-init-action@v1
+      - uses: timbertson/chored-setup@v1
       - name: precommit
         run: ./chored precommit
-        env: {}
+      - name: test
+        run: ./chored test --json "$OPTS"
+        env:
+          OPTS: '{"args":["test/lib/github/run_env_prtest_only.ts"]}'
+        if: github.event_name == 'pull_request'
+      - name: test
+        run: ./chored test --json "$OPTS"
+        env:
+          OPTS: '{"args":["test/lib/github/run_env_pushtest_only.ts"]}'
+        if: github.event_name == 'push'
