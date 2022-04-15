@@ -143,7 +143,9 @@ async function main(config: Config, args: Array<string>) {
 			let key = shift()
 			opts[key] = Code.value(parseInt(shift(), 10))
 		} else if (arg == '--json' || arg == '-j') {
-			Object.assign(opts, JSON.parse(shift()))
+			for (const [k,v] of Object.entries(JSON.parse(shift()))) {
+				opts[k] = Code.value(v)
+			}
 		} else if (arg == '--env') {
 			let key = shift()
 			let envKey = shift()
