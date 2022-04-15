@@ -17,6 +17,7 @@ export default async function(n: string) {
 	if (parts.length < 3) {
 		throw new Error("Invalid name-ref output: "+output)
 	}
+	console.log('parsing ref: ', output)
 	return {
 		name: parts[parts.length-1],
 		type: parts[1],
