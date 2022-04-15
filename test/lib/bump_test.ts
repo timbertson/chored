@@ -1,8 +1,9 @@
 import { assertEquals } from '../common.ts'
 import notNull from '../../lib/util/not_null.ts'
-import { Bumper, parseGH } from '../../lib/bump.ts'
 import { FakeFS } from '../../lib/fs/impl.ts'
 import { run } from '../../lib/cmd.ts'
+
+import { Bumper, parseGH } from '../../lib/bump.ts'
 
 const url = (r: string, spec?: string) => {
 	const base = `https://raw.githubusercontent.com/timbertson/chored/${r}/lib/README.md`
@@ -61,6 +62,11 @@ Deno.test('processImportURLs', async () => {
 	const replaced = await Bumper.processImportURLs(`
 		import { foo } from 'https://example.com/mod.ts#main'
 		export * as Mod from "http://example.com/mod.ts";
+		import {
+			foo,
+			bar,
+			baz
+		} from "http://example.com/multiline.ts";
 
 		// this is not an import: https://example.com/unused.ts
 	`,
@@ -73,6 +79,11 @@ Deno.test('processImportURLs', async () => {
 	assertEquals(replaced, `
 		import { foo } from 'https://example.com/mod.ts#main-new'
 		export * as Mod from "http://example.com/mod.ts-new";
+		import {
+			foo,
+			bar,
+			baz
+		} from "http://example.com/multiline.ts-new";
 
 		// this is not an import: https://example.com/unused.ts
 	`)

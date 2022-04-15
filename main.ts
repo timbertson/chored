@@ -139,6 +139,11 @@ async function main(config: Config, args: Array<string>) {
 			const value = shift()
 			const bool = notNull(bools[value], `boolean(${value})`)
 			opts[key] = Code.value(bool)
+		} else if (arg == '--num' || arg == '-n') {
+			let key = shift()
+			opts[key] = Code.value(parseInt(shift(), 10))
+		} else if (arg == '--json' || arg == '-j') {
+			Object.assign(opts, JSON.parse(shift()))
 		} else if (arg == '--env') {
 			let key = shift()
 			let envKey = shift()

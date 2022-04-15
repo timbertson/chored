@@ -228,7 +228,7 @@ export class Bumper {
 	}
 
 	static async processImportURLs(contents: string, fn: AsyncReplacer) {
-		const importRe = /^(\s*(?:import|export) .* from ['"])(https?:\/\/[^'"]+)(['"];?\s*)$/gm
+		const importRe = /( from +['"])(https?:\/\/[^'"]+)(['"];?\s*)$/gm
 
 		// technique from https://stackoverflow.com/questions/52417975/using-promises-in-string-replace
 		const replacements: { [index: string]: string } = {}

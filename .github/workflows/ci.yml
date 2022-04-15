@@ -4,13 +4,14 @@
   push:
     branches:
       - main
+      - master
   pull_request: {}
 jobs:
-  ci:
+  CI:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Cache
-        uses: timbertson/chored-init-action@main
-      - name: Test and generate
+      - uses: timbertson/chored-init-action@v1
+      - name: precommit
         run: ./chored precommit
+        env: {}
