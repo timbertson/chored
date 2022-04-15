@@ -8,12 +8,8 @@ function get(k: string) {
 	return e.get(k) || null
 }
 
-// function map(v: string|null, fn: (v: string) => string ): string | null {
-// 	return v === null ? v : fn(v)
-// }
-
 export const refType = get('GITHUB_REF_TYPE') as null | 'branch' | 'tag'
-export const event = get('GITHUB_EVENT') as null | Event
+export const event = get('GITHUB_EVENT_NAME') as null | Event
 
 export const isPush = event === 'push'
 export const isPullRequest = event === 'pull_request'
