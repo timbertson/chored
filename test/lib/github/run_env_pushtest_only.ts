@@ -7,6 +7,7 @@ import * as Env from '../../../lib/github/run_env.ts'
 // so these tests can't run in any other context :/
 Deno.test('run_env push context', async () => {
 	const ref = await parseRef('HEAD')
+	assertEquals(Env.refType, ref.type)
 	if (Env.refType === 'branch') {
 		assertEquals(Env.pushedBranch, ref.name)
 		assertEquals(Env.pushedTag, null)

@@ -19,6 +19,6 @@ export default async function(n: string) {
 	}
 	return {
 		name: parts[parts.length-1],
-		type: parts[parts.length-2],
+		type: parts[1],
 	}
 }
