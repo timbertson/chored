@@ -6,9 +6,7 @@ let fetched = false
 export default async function(n: string) {
 	// fight against shallow checkout
 	if (!fetched) {
-		const rev = (await runOutput(['git', 'rev-parse', 'HEAD'])).trim()
-		await run(['git', 'fetch', '--depth', '4', 'origin', rev, notNull(Deno.env.get('GITHUB_REF'))])
-		await run(['git', 'log', '--graph', '-n', '4'])
+		await run(['git', 'fetch', '--unshallow'])
 		fetched = true
 	}
 
