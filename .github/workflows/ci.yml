@@ -15,7 +15,9 @@ jobs:
       - name: Setup chored
         uses: timbertson/chored-setup@v1
       - name: precommit
-        run: ./chored precommit
+        run: ./chored precommit --json "$OPTS"
+        env:
+          OPTS: '{"requireClean":true}'
       - name: PR specific tests
         run: ./chored test --json "$OPTS"
         env:

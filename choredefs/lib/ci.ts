@@ -5,7 +5,7 @@ import merge from '../../lib/util/shallow_merge.ts'
 
 export const workflow = ciWorkflow(
 	setupSteps().concat(
-		chore({ name: 'precommit' }),
+		chore({ name: 'precommit', opts: { requireClean: true } }),
 		merge(
 			chore({ stepName: 'PR specific tests', name: 'test', opts: { args: ['test/lib/github/run_env_prtest_only.ts'] } }),
 			{ if: "github.event_name == 'pull_request'"}
