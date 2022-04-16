@@ -22,22 +22,25 @@ export function setupStep(opts?: SetupStepOptions): Step {
 	}
 }
 
-export type Expr = { expr: string }
-export function expr(expr: string): Expr {
-	return { expr }
-}
+export interface Expr { expr: string }
+export const expr = (expr: string): Expr => ({ expr })
+export const secret = (name: string): Expr => expr('secrets.' + name)
+
+export interface EnvVar { envName: string }
+export const envVar = (envName: string): EnvVar => ({ envName })
+
 export type Primitive = string | number | boolean
 export type Value = Primitive | Expr
+export type OptValue = Value | EnvVar | string[]
 
 export interface ChoreStep {
 	stepName?: string,
 	name: string,
 	module?: string | null,
-	opts?: { [k: string]: Value | string[] }
-	envOpts?: { [k: string]: string }
+	opts?: { [k: string]: OptValue }
 }
 
-function encodeValue(v: Value): Primitive {
+export function encodeValue(v: Value): Primitive {
 	if (v != null && typeof(v) === "object") {
 		return `\${{ ${v.expr} }}`
 	} else {
@@ -47,25 +50,29 @@ function encodeValue(v: Value): Primitive {
 
 export function chore(opts: ChoreStep): Step {
 	const args: string[] = []
-	for (const [k,v] of Object.entries(opts.envOpts ?? {})) {
-		args.push('--env', k, v)
-	}
-
 	const optValues: { [index: string]: Primitive | string[] } = {}
-	const env: { [index: string]: Primitive } = {}
 
 	for (const [k, v] of Object.entries(opts.opts ?? {})) {
-		if (Array.isArray(v)) {
-			optValues[k] = v
+		if (typeof(v) === 'object') {
+			if (Array.isArray(v)) {
+				optValues[k] = v
+			} else if (Object.hasOwn(v ,'expr')) {
+				optValues[k] = encodeValue(v as Expr)
+			} else if (Object.hasOwn(v ,'envName')) {
+				args.push('--env', k, (v as EnvVar).envName)
+			} else {
+				throw new Error(`Unkhandled OptValue: ${JSON.stringify(v)}`)
+			}
 		} else {
 			optValues[k] = encodeValue(v)
 		}
 	}
 
+	let env: { [index: string]: string } | null = null
 	const hasOpts = Object.keys(optValues).length > 0
 	if (hasOpts) {
 		args.push('--json', '"$OPTS"')
-		env['OPTS'] = JSON.stringify(optValues)
+		env = { OPTS: JSON.stringify(optValues) }
 	}
 
 	const main = [ opts.name ]
@@ -80,7 +87,7 @@ export function chore(opts: ChoreStep): Step {
 		run: `./chored ${main.join(' ')}${argStr}`,
 	}
 
-	if (Object.keys(env).length > 0) {
+	if (env != null) {
 		ret.env = env
 	}
 	return ret

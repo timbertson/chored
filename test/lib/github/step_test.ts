@@ -38,14 +38,17 @@ Deno.test('chore', () => {
 		Step.chore({
 			name: 'push',
 			stepName: 'Push to branch',
-			opts: { token: Step.expr('secrets.github_token') },
-			envOpts: { home: 'HOME' },
+			opts: {
+				token: Step.secret('github_token'),
+				home: Step.envVar('HOME'),
+				verbose: true,
+			},
 		}),
 		{
 			name: "Push to branch",
 			run: './chored push --env home HOME --json "$OPTS"',
 			env: {
-				OPTS: JSON.stringify({ token: '${{ secrets.github_token }}' })
+				OPTS: JSON.stringify({ token: '${{ secrets.github_token }}', verbose: true })
 			}
 		})
 })

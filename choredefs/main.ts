@@ -1,1 +1,1 @@
-precommit.ts
+ci.ts
