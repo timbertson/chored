@@ -4,9 +4,9 @@ import { assertEquals } from "../../../test/common.ts";
 
 const client = GH.defaultClient()
 
-Deno.test('createOrUpdatePullRquest', async () => {
+Deno.test('createOrUpdatePullRequest', async () => {
 	// NOTE: we don't execute the create / close code path after initial run, as it'd create a lot of PR churn
-	const pr = await client.createOrUpdatePullRquest({
+	const pr = await client.createOrUpdatePullRequest({
 		owner: 'timbertson',
 		repo: 'chored',
 		baseBranch: 'main',

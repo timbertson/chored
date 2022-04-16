@@ -8,4 +8,8 @@ Deno.test('run_env PR context', async () => {
 	// GH merges PR into target, so HEAD^s is the mainline
 	assertEquals(Env.pullRequestBranch, (await parseRef('HEAD^2')).name)
 	assertEquals(Env.pullRequestTarget, (await parseRef('HEAD^1')).name)
+	assertEquals(Env.repository, {
+		owner: 'timbertson',
+		name: 'chored',
+	})
 })

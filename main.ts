@@ -1,4 +1,5 @@
 import { FS, DenoFS } from './lib/fs/impl.ts'
+import withTempFile from './lib/fs/with_temp_file.ts'
 import notNull from './lib/util/not_null.ts'
 import { Config, defaultConfig } from './lib/chored_config.ts'
 import replaceSuffix from './lib/util/replace_suffix.ts'
@@ -96,14 +97,10 @@ export async function runResolved(entrypoint: Entrypoint, opts: RunOpts): Promis
 		}
 	`
 	// console.log(tsLiteral)
-	let tempFile = await Deno.makeTempFile({ prefix: "chored_", suffix: ".ts" })
-	let compiled;
-	try {
+	const compiled = await withTempFile({ prefix: "chored_", suffix: ".ts" }, async (tempFile: string) => {
 		await Deno.writeTextFile(tempFile, tsLiteral)
-		compiled = await import('file://' + tempFile);
-	} finally {
-		await Deno.remove(tempFile)
-	}
+		return await import('file://' + tempFile)
+	})
 	const result = compiled._run()
 	return isPromise(result) ? await result : result
 }
@@ -146,7 +143,7 @@ async function main(config: Config, args: Array<string>) {
 			for (const [k,v] of Object.entries(JSON.parse(shift()))) {
 				opts[k] = Code.value(v)
 			}
-		} else if (arg == '--env') {
+		} else if (arg == '--env' || arg == '-e') {
 			let key = shift()
 			let envKey = shift()
 			opts[key] = Code.env(envKey)
