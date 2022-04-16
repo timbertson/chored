@@ -1,4 +1,4 @@
-import { run, RunOpts, RunResult } from './cmd.ts'
+import { run, RunOpts, runOutput, RunResult } from './cmd.ts'
 import notNull from './util/not_null.ts'
 import merge from './util/shallow_merge.ts'
 
@@ -16,6 +16,7 @@ export interface CommonOptions {
 
 export interface UncommittedOptions extends CommonOptions {
 	includeUntracked?: boolean,
+	includeStaged?: boolean,
 	colorDiff?: boolean,
 }
 
@@ -38,17 +39,26 @@ export function identityEnv(identity: Identity): { [k: string]: string } {
 	}
 }
 
-export async function uncommittedChanges(opts?: UncommittedOptions): Promise<string|null> {
-	const runOpts: RunOpts = {
+function runOpts(common: CommonOptions): RunOpts {
+	const opts: RunOpts = {
 		printCommand: false,
+		cwd: common?.gitDir,
+	}
+	if (common.identity) {
+		opts.env = identityEnv(common.identity)
+	}
+	return opts
+}
+
+export async function uncommittedChanges(opts?: UncommittedOptions): Promise<string|null> {
+	const activeRunOpts: RunOpts = {
+		...runOpts(opts ?? {}),
 		allowFailure: true,
 		stdout: 'string',
 		stderr: 'string',
-		cwd: opts?.gitDir,
 	}
-
-	if (opts?.includeUntracked === true) {
-		const listUntracked = await run(['git', 'ls-files', '--other', '--exclude-standard'], runOpts)
+	if (opts?.includeUntracked !== false) {
+		const listUntracked = await run(['git', 'ls-files', '--other', '--exclude-standard'], activeRunOpts)
 		const untrackedFiles = notNull(listUntracked.output)
 		if (!listUntracked.status.success) {
 			return failUnexpectedStatus(listUntracked)
@@ -62,11 +72,11 @@ export async function uncommittedChanges(opts?: UncommittedOptions): Promise<str
 	if (opts?.colorDiff !== false) {
 		args.push('--color=always')
 	}
-	const diff = await run(['git',
-		'--no-pager',
-		'diff',
-		'--exit-code',
-	].concat(args, [ 'HEAD' ]), runOpts)
+	const cmd = ['git', '--no-pager', 'diff', '--exit-code' ]
+	if (opts?.includeStaged !== false) {
+		cmd.push('HEAD')
+	}
+	const diff = await run(cmd, activeRunOpts)
 
 	if (diff.status.code === 0) {
 		return null
@@ -94,4 +104,41 @@ export async function requireCleanAround<T>(opts: RequireCleanOptions, action: (
 	const result = await action()
 	await requireClean(merge(opts, { description: `after ${desc}`}))
 	return result
+}
+
+export async function branchName(options?: CommonOptions): Promise<string> {
+	return (await runOutput(['git', 'branch', '--show-current'], runOpts(options ?? {}))).trim()
+}
+
+export interface CommitAllOptions extends CommonOptions {
+	includeUntracked: boolean
+	commitMessage: string,
+}
+
+export interface AmendAllOptions extends CommonOptions {
+	includeUntracked: boolean
+}
+
+export async function addAll(options?: CommonOptions): Promise<void> {
+	await run(['git', 'add', '.'], runOpts(options || {}))
+}
+
+export async function commitAllChanges(options: CommitAllOptions): Promise<void> {
+	if (options.includeUntracked) {
+		await addAll(options)
+	}
+	await run(['git', 'commit', '--all', '--message', options.commitMessage], {
+		...runOpts(options),
+		printCommand: true
+	})
+}
+
+export async function amendAllChanges(options: AmendAllOptions): Promise<void> {
+	if (options.includeUntracked) {
+		await addAll(options)
+	}
+	await run(['git', 'commit', '--all', '--amend', '--no-edit'], {
+		...runOpts(options),
+		printCommand: true
+	})
 }

@@ -215,6 +215,8 @@ export class Bumper {
 		console.log(`\n${this.fetchCount} remote imports found, ${this.changeCount} updated`)
 	}
 	
+	changes(): number { return this.changeCount }
+	
 	async bumpFile(path: string, replacer?: AsyncReplacer): Promise<boolean> {
 		const defaultReplacer = (url: string) => this.replaceURL(url)
 		const contents = await this.fs.readTextFile(path)
@@ -253,7 +255,7 @@ export class Bumper {
 	}
 }
 
-export async function bump(roots: Array<string>, opts: WalkOptions): Promise<void> {
+export async function bump(roots: Array<string>, opts: WalkOptions = {}): Promise<number> {
 	const work: Array<Promise<boolean>> = []
 	const bumper = new Bumper()
 	bumper.verbose = opts.verbose ?? false
@@ -272,6 +274,7 @@ export async function bump(roots: Array<string>, opts: WalkOptions): Promise<voi
 	}
 	await Promise.all(work)
 	bumper.summarize()
+	return bumper.changes()
 }
 
 export interface WalkOptions {

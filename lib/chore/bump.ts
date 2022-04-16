@@ -12,9 +12,9 @@ export const defaultOptions = {
 }
 
 export function bumpWith(extraDefaults: Options): (_: Options) => Promise<void> {
-	return function(opts: Options): Promise<void> {
+	return async function(opts: Options): Promise<void> {
 		const merged = merge(defaultOptions, extraDefaults, opts)
-		return bump(merged.args || ['.'], merged)
+		await bump(merged.args || ['.'], merged)
 	}
 }
 

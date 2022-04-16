@@ -2,12 +2,14 @@
 import notNull from '../util/not_null.ts'
 import { Client as GQClient, Query } from '../graphql.ts'
 
+export interface CreateOrUpdatePROptions extends FindPRParams {
+	body: string,
+	title: string,
+	baseBranch: string,
+}
+
 export class GithubClient extends GQClient {
-	async createOrUpdatePullRquest(opts: FindPRParams & {
-		body: string,
-		title: string,
-		baseBranch: string,
-	}): Promise<PullRequestIdentity> {
+	async createOrUpdatePullRequest(opts: CreateOrUpdatePROptions): Promise<PullRequestIdentity> {
 		const existing = await this.execute(findPullRequests, opts)
 		let pr = existing.pullRequests[0]
 		if (pr) {
@@ -15,11 +17,15 @@ export class GithubClient extends GQClient {
 				...opts,
 				id: pr.id
 			})
+			console.log(`Pull request updated: ${pr.url}`)
+
 		} else {
 			pr = await this.execute(createPullRequest, {
 				...opts,
 				repositoryId: existing.repositoryId
 			})
+			console.log(`Pull request created: ${pr.url}`)
+
 		}
 		return pr
 	}
@@ -154,4 +160,19 @@ export const closePullRequest: Query<Identity, void> = {
 			}
 		}
 	`,
+}
+
+export interface UserIdentity {
+	login: string,
+}
+
+export const getAuthenticatedUser: Query<null, UserIdentity> = {
+	extract: (obj: any) => ({ login: obj.viewer.login }),
+	queryText: `
+		query {
+			viewer {
+				login
+			}
+		}
+	`
 }
