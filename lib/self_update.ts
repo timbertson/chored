@@ -143,7 +143,7 @@ export function _makePullRequestHandler(impl: {
 						body: (
 							`## :no_entry_sign: Error:\n\nAn error occurred while generating this PR: \`${error.message}\`\n\n`
 							+ 'You may need to re-run this action and fix the errors manually. This PR is created for visibiliy, '
-							+ 'it may not have any useful changed.'
+							+ 'it may not have any useful changes.\n\n---\n\n'
 							+ prOpts.body
 						)
 					})
