@@ -139,8 +139,11 @@ export function _makePullRequestHandler(impl: {
 
 					await client.createOrUpdatePullRequest({
 						...prOpts,
+						title: prOpts.title + ':no_entry:',
 						body: (
-							`## :no_entry_sign: **NOTE: an error occurred while generating this PR: \`${error.message}\`\n\n`
+							`## :no_entry_sign: Error:\n\nAn error occurred while generating this PR: \`${error.message}\`\n\n`
+							+ 'You may need to re-run this action and fix the errors manually. This PR is created for visibiliy, '
+							+ 'it may not have any useful changed.'
 							+ prOpts.body
 						)
 					})
