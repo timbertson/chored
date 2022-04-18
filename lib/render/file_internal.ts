@@ -90,7 +90,11 @@ export class TextFile extends BaseFile<string> implements Writeable {
 			lines = header
 			lines.push(this.value)
 		}
-		return join(lines)
+		let joined = join(lines)
+		if (!joined.endsWith('\n')) {
+			joined = joined + '\n'
+		}
+		return joined
 	}
 }
 

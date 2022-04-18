@@ -19,6 +19,7 @@ Deno.test("render files", async () => {
 	], fs)
 	
 	const attrLine = (path: string) => `${path} linguist-generated chored-generated`
+		fs.files['.gitattributes'],
 	assertEquals(
 		fs.files['.gitattributes'],
 		[
@@ -28,7 +29,7 @@ Deno.test("render files", async () => {
 			attrLine("chored"),
 			attrLine("generated"),
 			attrLine("nested/generated"),
-		].join("\n"))
+		].join("\n") + "\n")
 	
 	await fs.remove('.gitattributes')
 	await fs.remove('chored')
@@ -53,5 +54,5 @@ Deno.test("render mode", () => {
 
 Deno.test("shebang formatting", async () => {
 	const contents = new Render.ExecutableFile("dest", "#!/usr/bin/env bash\nline1\nline2").serialize().split("\n")
-	assertEquals(contents, ["#!/usr/bin/env bash", `# ${MARKER}`, "", "line1", "line2"])
+	assertEquals(contents, ["#!/usr/bin/env bash", `# ${MARKER}`, "", "line1", "line2", ""])
 })
