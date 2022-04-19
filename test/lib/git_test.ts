@@ -2,7 +2,7 @@ import { assertEquals, assertRejects, assertMatch } from '../common.ts'
 import * as git from '../../lib/git.ts'
 import notNull from '../../lib/util/not_null.ts'
 import { Context } from './git_ctx.ts'
-import { run } from "../../lib/cmd.ts";
+import { run, runOutput } from "../../lib/cmd.ts";
 
 Deno.test('git unclean detection', () => Context.run(async (ctx: Context) => {
 	assertEquals(await git.uncommittedChanges(ctx.gitOpts), null)
@@ -42,4 +42,20 @@ Deno.test('git branch name', () => Context.run(async (ctx: Context) => {
 	assertEquals(await git.branchName(ctx.gitOpts), 'master')
 	await run(['git', 'switch', '--detach', 'HEAD'], ctx.runOpts)
 	assertEquals(await git.branchName(ctx.gitOpts), null)
+}))
+
+Deno.test('git commit', () => Context.run(async (ctx: Context) => {
+	ctx.write('c', 'new file')
+	const catC = () => runOutput(['git', 'show', 'HEAD:c'], ctx.runOpts)
+	await git.commitAllChanges({ ...ctx.gitOpts, includeUntracked: true, identity: git.nobody, commitMessage: 'new stuff' })
+
+	assertEquals(await runOutput(['git', 'log', '-1', '--format=%s %cn %ce %an %ae'], ctx.runOpts),
+		'new stuff nobody nobody@localhost nobody nobody@localhost'
+	)
+	assertEquals(await catC(), 'new file')
+
+	ctx.write('c', 'new file (updated)')
+	await git.amendAllChanges({ ...ctx.gitOpts, includeUntracked: true })
+	assertEquals(await runOutput(['git', 'log', '-1', '--format=%s'], ctx.runOpts), 'new stuff')
+	assertEquals(await catC(), 'new file (updated)')
 }))

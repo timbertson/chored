@@ -120,8 +120,8 @@ export interface AmendAllOptions extends CommonOptions {
 	includeUntracked: boolean
 }
 
-export async function addAll(options?: CommonOptions): Promise<void> {
-	await run(['git', 'add', '.'], runOpts(options || {}))
+export async function addAll(options: CommonOptions = {}): Promise<void> {
+	await run(['git', 'add', '.'], runOpts(options))
 }
 
 export async function commitAllChanges(options: CommitAllOptions): Promise<void> {
