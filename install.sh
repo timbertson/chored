@@ -36,7 +36,7 @@ _main() {
 	DENO_ARGS=(--unstable --allow-all)
 
 	HEAD_SHA="$(git ls-remote https://github.com/timbertson/chored.git main | head -n 1 | cut -f 1)"
-	BOOTSTRAP='https://raw.githubusercontent.com/timbertson/chored/$HEAD_SHA/lib/bootstrap.ts'
+	BOOTSTRAP="https://raw.githubusercontent.com/timbertson/chored/$HEAD_SHA/lib/bootstrap.ts"
 	exec "$DENO" run "${DENO_ARGS[@]}" "${BOOTSTRAP_OVERRIDE:-$BOOTSTRAP}"
 
 }

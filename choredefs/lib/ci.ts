@@ -18,7 +18,8 @@ export const workflow = ciWorkflow(
 		tap(
 			chore({ stepName: 'Integration tests (Github API)', name: 'test', opts: { args: ['integration/github/authenticated'] } }),
 			(step: any) => step.env.GITHUB_TOKEN = '${{ secrets.github_token }}'
-		)
+		),
+		chore({ stepName: 'Integration tests (Bootstrap)', name: 'test', opts: { args: ['integration/bootstrap'] } }),
 	), {
 		branches: ['main', 'ci-*']
 	}

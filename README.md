@@ -29,9 +29,9 @@ You can use it for anything, but it's built primarily to solve the problem of CI
 curl -sSL https://raw.githubusercontent.com/timbertson/chored/main/install.sh | bash
 ```
 
-This will create a couple of `choredefs/*.ts` in the current directory, then rnu the `render` chore to produce:
+This will create a skeleton `choredefs/render.ts` and then run it to generate the bare minimum files:
  - `chored` wrapper scrpt
- - `.gitattributes` metadata file
+ - `.gitattributes` metadata
 
 If you don't already have `deno` available, it will be downloaded into `~/.cache/chored`
 
