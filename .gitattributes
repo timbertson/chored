@@ -3,6 +3,7 @@
 .gitattributes linguist-generated chored-generated
 .github/workflows/ci.yml linguist-generated chored-generated
 chored linguist-generated chored-generated
+example/Dockerfile linguist-generated chored-generated
 example/generated.json linguist-generated chored-generated
 example/generated.yaml linguist-generated chored-generated
 install.sh linguist-generated chored-generated

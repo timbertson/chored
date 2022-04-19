@@ -36,6 +36,7 @@ export const repository: Repository | null = (() => {
 })()
 
 export const triggerRefName = get('GITHUB_REF_NAME')
+export const triggerCommitSHA = get('GITHUB_SHA')
 
 export const isBranchPush = isPush && refType === 'branch'
 export const isTagPush = isPush && refType === 'tag'

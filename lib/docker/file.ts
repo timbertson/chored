@@ -12,24 +12,32 @@ export const Step = {
 // either a public image or another stage within the same dockerfile
 export type ImageSource = Image | string
 
-export interface Stage {
+export interface MinimalSpec {
+	stages: MinimalStage[]
+	url: string,
+}
+
+export interface MinimalStage {
+	name: string
+	tagSuffix?: string,
+}
+
+export interface Stage extends MinimalStage {
 	from: ImageSource,
-	urlSuffix: string | null,
-	name: string,
 	steps: Step[],
 }
 
 export class StageExt implements Stage {
 	from: ImageSource
-	urlSuffix: string | null = null // null means use `-${name}`
+	tagSuffix?: string
 	name: string
 	steps: Step[] = []
 
-	constructor(name: string, props: { from: ImageSource }) {
+	constructor(name: string, props: { from: ImageSource, tagSuffix?: string }) {
 		this.from = props.from
 		this.name = name
-		this.steps = [
-		]
+		this.steps = []
+		this.tagSuffix = props.tagSuffix
 	}
 	
 	rawStep(name: string, line: string): this {

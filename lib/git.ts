@@ -106,8 +106,9 @@ export async function requireCleanAround<T>(opts: RequireCleanOptions, action: (
 	return result
 }
 
-export async function branchName(options?: CommonOptions): Promise<string> {
-	return (await runOutput(['git', 'branch', '--show-current'], runOpts(options ?? {}))).trim()
+export async function branchName(options?: CommonOptions): Promise<string | null> {
+	const output = (await runOutput(['git', 'branch', '--show-current'], runOpts(options ?? {}))).trim()
+	return output === '' ? null : output
 }
 
 export interface CommitAllOptions extends CommonOptions {

@@ -23,6 +23,14 @@ export class ImageExt implements Image {
 		return new ImageExt({ url: this.url, digest })
 	}
 	
+	// only really useful to make comparisons simpler in tests
+	get raw(): Image {
+		const rv: Image = { url: this.url }
+		if (this.tag != null) rv.tag = this.tag
+		if (this.digest != null) rv.digest = this.tag
+		return rv
+	}
+	
 	static show(i: Image): string {
 		let ret = i.url
 		if (i.digest) {
