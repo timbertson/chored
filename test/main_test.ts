@@ -4,7 +4,7 @@ import { run } from '../lib/cmd.ts'
 import withTempDir from '../lib/fs/with_temp_dir.ts'
 import * as Main from '../main.ts'
 import { Config, defaultConfig } from '../lib/chored_config.ts'
-import replaceSuffix from '../lib/util/replace_suffix.ts'
+import { replaceSuffix } from '../lib/util/string.ts'
 
 Deno.test("bootstrap", async () => {
 	const here = Deno.cwd()

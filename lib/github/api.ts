@@ -1,5 +1,5 @@
 // Pull request API
-import notNull from '../util/not_null.ts'
+import { notNull } from '../util/object.ts'
 import { Client as GQClient, Query } from '../graphql.ts'
 
 export interface CreateOrUpdatePROptions extends FindPRParams {

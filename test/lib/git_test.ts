@@ -1,6 +1,6 @@
 import { assertEquals, assertRejects, assertMatch } from '../common.ts'
 import * as git from '../../lib/git.ts'
-import notNull from '../../lib/util/not_null.ts'
+import { notNull } from '../../lib/util/object.ts'
 import { Context } from './git_ctx.ts'
 import { run, runOutput } from "../../lib/cmd.ts";
 

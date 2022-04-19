@@ -1,16 +1,16 @@
 // Code for writing out a set of generated files
 import { FS, DenoFS, FSUtil } from './fs/impl.ts'
-import { Writeable, GitAttributes, GENERATED_ATTR, writeTo } from './render/file_internal.ts'
+import { File, GitAttributes, GENERATED_ATTR, writeTo } from './render/file_internal.ts'
 export * from './render/file.ts'
 import { wrapperScript } from './render/bootstrap.ts'
 export { wrapperScript } from './render/bootstrap.ts'
 
 export type Options = {
 	gitattributesExtra?: Array<string>,
-	wrapperScript?: boolean | Writeable,
+	wrapperScript?: boolean | File,
 }
 
-export async function render(files: Array<Writeable>, options?: Options, fsOverride?: FS): Promise<void> {
+export async function render(files: Array<File>, options?: Options, fsOverride?: FS): Promise<void> {
 	options = options || {}
 	files = files.slice()
 	if (options.wrapperScript !== false) {
@@ -38,7 +38,7 @@ export async function render(files: Array<Writeable>, options?: Options, fsOverr
 		previousPaths = generatedFromGitAttributes(fileContents)
 	} catch (err) {
 		if (fsUtil.isNotFound(err)) {
-			console.warn(`Can't check generated files in ${attributesFile.path}; assuming this is the first file generation run`)
+			console.warn(`Can't load state from ${attributesFile.path}; assuming this is the first file generation run`)
 		} else {
 			throw err
 		}

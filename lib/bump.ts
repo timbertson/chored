@@ -1,4 +1,4 @@
-import notNull from './util/not_null.ts'
+import { notNull } from './util/object.ts'
 import { run } from './cmd.ts'
 import { FS, DenoFS } from './fs/impl.ts';
 import { walk } from './walk.ts'

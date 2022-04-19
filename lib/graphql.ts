@@ -1,4 +1,4 @@
-import merge from "./util/shallow_merge.ts"
+import { merge } from "./util/object.ts"
 
 const trace = Deno.env.get('TRACE_GRAPHQL') == '1' ? (...args: any) => console.log(...args) : (...args: any) => { return }
 

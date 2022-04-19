@@ -1,6 +1,5 @@
 import { run, RunOpts, runOutput, RunResult } from './cmd.ts'
-import notNull from './util/not_null.ts'
-import merge from './util/shallow_merge.ts'
+import { notNull, merge } from './util/object.ts'
 
 export interface Identity {
 	name: string,

@@ -3,13 +3,12 @@ import { DenoFS } from './fs/impl.ts'
 
 const renderModule = import.meta.url.replace(/bootstrap.ts$/, 'render.ts')
 
-const renderTask = `
-import { render, wrapperScript, JSONFile, YAMLFile } from '${renderModule}#main'
+const renderTask = `import * as Render from '${renderModule}#main'
 
 export async function main(opts: {}) {
-	render([
-		// TODO add your own generated files
-	])
+  Render.render([
+    // TODO add your own generated files
+  ])
 }
 `
 

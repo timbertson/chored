@@ -1,5 +1,5 @@
 import { assertEquals } from '../common.ts'
-import notNull from '../../lib/util/not_null.ts'
+import { notNull } from '../../lib/util/object.ts'
 import { FakeFS } from '../../lib/fs/impl.ts'
 import { run } from '../../lib/cmd.ts'
 

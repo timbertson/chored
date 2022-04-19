@@ -1,8 +1,8 @@
 import { FS, DenoFS } from './lib/fs/impl.ts'
 import withTempFile from './lib/fs/with_temp_file.ts'
-import notNull from './lib/util/not_null.ts'
+import { notNull } from './lib/util/object.ts'
 import { Config, defaultConfig } from './lib/chored_config.ts'
-import replaceSuffix from './lib/util/replace_suffix.ts'
+import { replaceSuffix } from './lib/util/string.ts'
 
 interface Code {
 	tsLiteral: string

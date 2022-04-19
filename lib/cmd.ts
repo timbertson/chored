@@ -1,6 +1,6 @@
 import { readLines } from "https://deno.land/std@0.133.0/io/buffer.ts"
 
-import notNull from './util/not_null.ts'
+import { notNull } from './util/object.ts'
 
 export type Stdio = 'inherit' | 'discard' | 'string' | 'printOnError' | ((line: string) => void)
 

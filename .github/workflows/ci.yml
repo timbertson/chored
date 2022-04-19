@@ -33,3 +33,7 @@ jobs:
         env:
           OPTS: '{"args":["integration/github/authenticated"]}'
           GITHUB_TOKEN: '${{ secrets.github_token }}'
+      - name: Integration tests (Bootstrap)
+        run: ./chored test --json "$OPTS"
+        env:
+          OPTS: '{"args":["integration/bootstrap"]}'

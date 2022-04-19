@@ -1,3 +1,5 @@
+import { joinLines } from "../util/string.ts";
+
 export const MARKER = "NOTE: This file is generated" + " by chored"
 const HEADER_LINES = [MARKER]
 
@@ -9,22 +11,20 @@ export function renderHeaderLines(opts: { linePrefix: string, lineSuffix?: strin
 	return lines
 }
 
-export function join(lines: Array<string>) { return lines.join("\n") }
-
-export interface WriteableOpts {
+export interface FileOpts {
 	readOnly?: boolean,
 	executable?: boolean
 }
 
-export interface FileMeta extends WriteableOpts {
+export interface FileMeta extends FileOpts {
 	path: string,
 }
 
-export interface Writeable extends FileMeta {
+export interface File extends FileMeta {
 	serialize(): string
 }
 
-export function writeMode(file: WriteableOpts) {
+export function writeMode(file: FileOpts) {
 	let mode = 0o400
 
 	if (file.readOnly === false) {
@@ -45,7 +45,7 @@ type FSUtil = {
 	forceWriteTextFile(path: string, contents: string, useTemp: boolean, opts: Deno.WriteFileOptions): Promise<void>,
 }
 
-export async function writeTo(fsUtil: FSUtil, file: Writeable, useTemp: boolean): Promise<void> {
+export async function writeTo(fsUtil: FSUtil, file: File, useTemp: boolean): Promise<void> {
 	await fsUtil.mkdirp(fsUtil.dirname(file.path))
 	await fsUtil.forceWriteTextFile(file.path, file.serialize(), useTemp, { mode: writeMode(file) })
 }
@@ -60,7 +60,7 @@ export abstract class BaseFile<T> {
 
 	abstract serialize(): string
 
-	set(opts: WriteableOpts): this {
+	set(opts: FileOpts): this {
 		Object.assign(this, opts)
 		return this
 	}
@@ -73,10 +73,10 @@ export abstract class DerivedFile {
 		this.path = path
 	}
 
-	abstract derive(paths: Array<string>): Writeable
+	abstract derive(paths: Array<string>): File
 }
 
-export class TextFile extends BaseFile<string> implements Writeable {
+export class TextFile extends BaseFile<string> implements File {
 	headerLinePrefix: string = "#"
 	headerLineSuffix: string | null = null
 
@@ -90,7 +90,7 @@ export class TextFile extends BaseFile<string> implements Writeable {
 			lines = header
 			lines.push(this.value)
 		}
-		let joined = join(lines)
+		let joined = joinLines(lines)
 		if (!joined.endsWith('\n')) {
 			joined = joined + '\n'
 		}
@@ -109,8 +109,8 @@ export class GitAttributes extends DerivedFile {
 		this.extraLines = extraLines
 	}
 
-	derive(paths: Array<string>): Writeable {
-		const value = join(paths.map(p => `${p} linguist-generated ${GENERATED_ATTR}`).concat(this.extraLines))
+	derive(paths: Array<string>): File {
+		const value = joinLines(paths.map(p => `${p} linguist-generated ${GENERATED_ATTR}`).concat(this.extraLines))
 		return new TextFile(this.path, value)
 	}
 }

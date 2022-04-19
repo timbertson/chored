@@ -1,4 +1,4 @@
-import equalSets from "../../../lib/util/equal_sets.ts";
+import { equalSets } from "../../../lib/util/collection.ts";
 import { assertEquals } from "../../common.ts";
 
 Deno.test('equalSets', () => {

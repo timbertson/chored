@@ -1,9 +1,9 @@
 import { assertEquals } from '../common.ts'
 import * as Render from '../../lib/render.ts'
-import { MARKER, writeMode, WriteableOpts } from '../../lib/render/file_internal.ts'
+import { MARKER, writeMode, FileOpts } from '../../lib/render/file_internal.ts'
 import { FakeFS } from '../../lib/fs/impl.ts'
 
-function render(files: Array<Render.Writeable>, fs: FakeFS): Promise<void> {
+function render(files: Array<Render.File>, fs: FakeFS): Promise<void> {
 	return Render.render(files, {}, fs)
 }
 
@@ -45,7 +45,7 @@ Deno.test("render files", async () => {
 });
 
 Deno.test("render mode", () => {
-	const mode = (opts: WriteableOpts) => writeMode(opts).toString(8)
+	const mode = (opts: FileOpts) => writeMode(opts).toString(8)
 	assertEquals(mode({}), "400") // r--
 	assertEquals(mode({ executable: true }), "500") // r-x
 	assertEquals(mode({ readOnly: false }), "600") // rw-

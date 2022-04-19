@@ -2,7 +2,7 @@ import { run } from "./cmd.ts";
 import * as Git from './git.ts'
 import * as GH from "./github/api.ts";
 import * as Env from "./github/run_env.ts";
-import notNull from "./util/not_null.ts";
+import { notNull } from './util/object.ts'
 
 export interface Handler {
 	wrap: (fn: () => Promise<void>) => Promise<void>,

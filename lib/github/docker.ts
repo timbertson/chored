@@ -1,8 +1,8 @@
 import * as Env from './run_env.ts'
 import * as Git from '../git.ts'
 import { Spec } from "../docker/file.ts";
-import notNull from "../util/not_null.ts";
-import dedupe from "../util/dedupe.ts";
+import { notNull } from '../util/object.ts'
+import { dedupe } from "../util/collection.ts";
 import { buildAll, BuildOptions, TagStrategy } from "../docker/build.ts";
 
 type Options = BuildOptions & { mainBranchName?: string }

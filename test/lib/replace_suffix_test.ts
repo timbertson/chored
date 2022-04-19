@@ -1,5 +1,5 @@
 import { assertEquals, assertThrows } from '../common.ts'
-import replaceSuffix from '../../lib/util/replace_suffix.ts'
+import { replaceSuffix } from '../../lib/util/string.ts'
 
 Deno.test('replaceSuffix', () => {
 	assertEquals(replaceSuffix('abcdefgh', 'gh', ' (etc)'), 'abcdef (etc)')

@@ -1,7 +1,7 @@
 import { Config, defaultConfig } from './chored_config.ts'
 import { run } from './cmd.ts'
 import withTempFile from './fs/with_temp_file.ts'
-import replaceSuffix from './util/replace_suffix.ts'
+import { replaceSuffix } from './util/string.ts'
 
 export const lockPath = (config: Config = defaultConfig) => `${config.taskRoot}/.lock.json`
 

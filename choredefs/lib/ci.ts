@@ -1,8 +1,7 @@
 // chored's own CI workflow
 import { setupSteps, chore } from '../../lib/github/step.ts'
 import { ciWorkflow } from '../../lib/github/workflow.ts'
-import merge from '../../lib/util/shallow_merge.ts'
-import tap from '../../lib/util/tap.ts'
+import { merge, tap } from '../../lib/util/object.ts'
 
 export const workflow = ciWorkflow(
 	setupSteps().concat(

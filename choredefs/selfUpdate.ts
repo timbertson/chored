@@ -2,7 +2,7 @@ import * as Update from '../lib/self_update.ts'
 import { computeLock } from "../lib/lock.ts";
 import { main as bump } from "../lib/chore/bump.ts";
 import { main as render } from "./render.ts";
-import equalSets from "../lib/util/equal_sets.ts";
+import { equalSets } from "../lib/util/collection.ts";
 import * as Git from "../lib/git.ts";
 import { run } from "../lib/cmd.ts";
 
