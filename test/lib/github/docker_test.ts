@@ -1,6 +1,8 @@
-import { _buildOptions, GithubEnv } from "../../../lib/github/docker.ts";
-import { MinimalSpec } from "../../../lib/docker/file.ts";
 import { assertEquals } from "../../common.ts";
+
+import { _buildOptions, GithubEnv } from "../../../lib/github/docker.ts";
+import * as Git from "../../../lib/git.ts"
+import { sort } from "../../../lib/util/collection.ts";
 
 const sha = 'abcd123'
 
@@ -20,7 +22,7 @@ Deno.test('buildOptions dev', async () => {
 
 	assertEquals(await _buildOptions(devEnv, {}),
 		{
-			cacheFrom: [ "ci-test-1", "latest" ],
+			cacheFrom: sort([ await Git.branchName(), "latest" ]),
 			push: false,
 			tags: [ "development" ],
 		}
