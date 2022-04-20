@@ -1,28 +1,36 @@
-import { assertEquals } from '../common.ts'
+import { assertEquals, assertExists, assertNotEquals } from '../common.ts'
 import { notNull } from '../../lib/util/object.ts'
 import { FakeFS } from '../../lib/fs/impl.ts'
 import { run } from '../../lib/cmd.ts'
 
-import { Bumper, parseGH } from '../../lib/bump.ts'
+import { Bumper, Source, GithubSource, GithubSpec, ImportSpec, GithubImport } from '../../lib/bump.ts'
 
-const url = (r: string, spec?: string) => {
-	const base = `https://raw.githubusercontent.com/timbertson/chored/${r}/lib/README.md`
-	return spec ? base+'#'+spec : base
+const url = (r: string, p?: { spec?: string, repo?: string, path?: string }) => {
+	const base = `https://raw.githubusercontent.com/${p?.repo ?? 'timbertson/chored'}/${r}/${p?.path ?? 'lib/README.md'}`
+	return p?.spec ? base+'#'+p.spec : base
 }
 
-Deno.test('bump parseGH', () => {
+function parseGH(s: string): { spec: GithubSpec, import: GithubImport } {
+	let p = GithubSource.parse(s)
+	if (p == null) {
+		throw new Error(`Can't parse GH: ${s}`)
+	} else {
+		return { spec: p.spec as GithubSpec, import: p.import }
+	}
+}
+
+Deno.test('bump parseGH', (t) => {
 	const base = url('SHA')
-	const updated = url('UPDATED')
-	assertEquals(parseGH(base)?.imp, {
+	const expected = {
 		owner: "timbertson",
 		repo: "chored",
 		prefix: "https://raw.githubusercontent.com",
 		version: "SHA",
 		spec: null,
 		path: "lib/README.md"
-	})
-	assertEquals(parseGH(base)?.formatVersion('UPDATED'), updated)
-	assertEquals(parseGH(url('SHA', 'ref'))?.formatVersion('UPDATED'), updated + '#ref')
+	}
+	assertEquals(parseGH(base)?.import, expected)
+	assertEquals(parseGH(base + "#ref")?.import, { ... expected, spec: 'ref' })
 })
 
 const testSha = '7fa1accd89e45af5c7e60f904d9710c9f4024315'
@@ -36,30 +44,35 @@ async function fetchTestCommit() {
 }
 
 Deno.test('bump resolve branch', async () => {
-	// override URLs to resolve from local repo
 	const spec = 'test-branch-1'
-	const source = notNull(parseGH(url('SHA', spec)))
+	const source = parseGH(url('SHA', { spec }))
 
 	await fetchTestCommit()
 	await run(['git', 'branch', '--force', spec, testSha], { printCommand: false })
 	
-	const resolved = await source.resolveFrom('.', false)
-	assertEquals(resolved, url(testSha, spec))
+	const update = notNull(await source.spec.resolveFrom('.', false))
+	assertEquals(update(source.import), url(testSha, { spec }))
+	assertEquals(update({ ... source.import, path: 'Dockerfile' }), url(testSha, { spec, path: 'Dockerfile' }))
 })
 
 Deno.test('bump resolve wildcard tag', async () => {
-	// override URLs to resolve from local repo
 	const spec = 'test-version-*'
-	const source = notNull(parseGH(url('SHA', spec)))
+	const source = notNull(parseGH(url('SHA', { spec })))
 
 	await fetchTestCommit()
-	const resolved = await source.resolveFrom('.', false)
-	assertEquals(resolved, url(testShaTag, spec))
+	const update = notNull(await source.spec.resolveFrom('.', false))
+	assertEquals(update(source.import), url(testShaTag, { spec }))
+})
+
+Deno.test('GithubSource cache identity only cares about repo and spec', () => {
+	assertEquals(parseGH(url('COMMIT', { spec: 'branch1' })).spec.identity, 'github:timbertson/chored#branch1')
+	assertEquals(parseGH(url('COMMIT')).spec.identity, 'github:timbertson/chored')
+	assertEquals(parseGH(url('COMMIT', { repo: 'actions/cache' })).spec.identity, 'github:actions/cache')
 })
 
 Deno.test('processImportURLs', async () => {
 	const urls: Array<string> = []
-	const replaced = await Bumper.processImportURLs(`
+	const replaced = await (new Bumper()).processImportURLs(`
 		import { foo } from 'https://example.com/mod.ts#main'
 		export * as Mod from "http://example.com/mod.ts";
 		import {

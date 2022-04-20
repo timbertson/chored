@@ -15,11 +15,6 @@ import { Version } from './version.ts'
  * https://.../mod.ts#master
  */
 
-interface Source {
-	cacheId(): string,
-	resolve(verbose: boolean): Promise<string|null>
-}
-
 export interface GithubImport {
 	prefix: string,
 	path: string,
@@ -29,51 +24,93 @@ export interface GithubImport {
 	repo: string,
 }
 
-export class GithubSource implements Source {
-	imp: GithubImport
-	constructor(imp: GithubImport) {
-		this.imp = imp
+// to prove out the tpes work with multiple import types; remove this when we support more thant just GH
+interface TestImport {
+	foo: boolean
+}
+
+type AnyImport = GithubImport | TestImport
+type AnySource = Source<GithubImport>|Source<TestImport>
+
+// This would be nicer with a GADT to show a spec could oly be invoked with
+// its corresponding import type, but that sounds too hard
+type Updater = (imp: AnyImport) => string
+function updater<Import extends AnyImport>(fn: (imp: Import) => string): Updater {
+	return function(anyImport: AnyImport): string {
+		return fn(anyImport as Import)
 	}
-	
-	cacheId(): string {
-		return this.addSpec(`github:${this.imp.owner}/${this.imp.repo}`)
+}
+
+// a specific spec (e.g. github repo & branch)
+export interface Spec {
+	identity: string,
+	resolve(verbose: boolean): Promise<Updater | null>
+}
+
+export interface ImportSpec<Import> {
+	import: Import,
+	spec: Spec,
+}
+
+export interface Source<Import> {
+	parse(s: string): ImportSpec<Import> | null
+}
+
+export class GithubSpec implements Spec {
+	identity: string
+	repo: string
+	ref: string | null
+
+	constructor(imp: {spec: string | null, owner: string, repo: string}) {
+		this.ref = imp.spec
+		this.identity = GithubSpec.addSpec(imp, `github:${imp.owner}/${imp.repo}`)
+
+		// TODO: use https if there's known creds, otherwise ssh?
+		// TODO: reuse deno's credentials system for transparently accessing private repos
+		this.repo = `git@github.com:${imp.owner}/${imp.repo}.git`
 	}
-	
-	private addSpec(s: string) {
-		if (this.imp.spec) {
-			return s + '#' + this.imp.spec
+
+	private static addSpec(imp: { spec: string | null }, s: string): string {
+		if (imp.spec) {
+			return s + '#' + imp.spec
 		} else {
 			return s
 		}
 	}
-	
-	formatVersion(version: string) {
-		const imp = this.imp
-		return this.addSpec(`${imp.prefix}/${imp.owner}/${imp.repo}/${version}/${imp.path}`)
-	}
-	
-	async resolve(verbose: boolean): Promise<string|null> {
-		// TODO: use https if there's known creds, otherwise ssh?
-		// TODO: reuse deno's credentials system for transparently accessing private repos
-		const repo = `git@github.com:${this.imp.owner}/${this.imp.repo}.git`
-		return this.resolveFrom(repo, verbose)
+
+	async resolve(verbose: boolean): Promise<Updater|null> {
+		return this.resolveFrom(this.repo, verbose)
 	}
 
-	async resolveFrom(repo: string, verbose: boolean): Promise<string|null> {
-		const latest = await GithubSource.resolveLatest(repo, this.imp.spec, verbose)
-		if (latest === null || latest === this.imp.version) {
-			// not found or unchanged
+	async resolveFrom(repo: string, verbose: boolean): Promise<Updater|null> {
+		this.repo = repo // only used in testing
+		const version = await this.resolveLatestVersion(verbose)
+		if (version) {
+			return updater<GithubImport>((imp: GithubImport) =>
+				GithubSpec.addSpec(imp, `${imp.prefix}/${imp.owner}/${imp.repo}/${version}/${imp.path}`)
+			)
+		} else {
 			return null
 		}
-		return this.formatVersion(latest)
 	}
-	
-	static async resolveLatest(repo: string, ref: string | null, verbose: boolean): Promise<string|null> {
-		let refs: Array<Ref> = []
-		const refFilter = ref || 'v*'
-		function processLine(line: string) {
-			refs.push(parseRef(line))
+
+	private parseRef(line: string): Ref {
+		let [commit, name] = line.split('\t', 2)
+		
+		// without refs/heads, refs/tags, etc
+		const shortName = name.replace(/^refs\/[^/]+\//, '')
+
+		if (name.startsWith('refs/tags/')) {
+			// assume immutable; use the friendly name
+			commit = shortName
 		}
+		return { commit, name: shortName }
+	}
+
+	private async resolveLatestVersion(verbose: boolean): Promise<string|null> {
+		let refs: Array<Ref> = []
+		const refFilter = this.ref || 'v*'
+		const processLine = (line: string) => refs.push(this.parseRef(line))
 		const cmd = ['git', 'ls-remote']
 		const isWildcard = refFilter.lastIndexOf('*') >= 0
 
@@ -84,23 +121,23 @@ export class GithubSource implements Source {
 			// grab all refs, because we've got a specific ref
 			cmd.push('--tags', '--heads')
 		}
-		cmd.push(repo, refFilter)
+		cmd.push(this.repo, refFilter)
 
 		await run(cmd, { stdout: processLine, printCommand: verbose })
 		if (verbose) {
-			console.log(`[refs]: ${refs.length} ${repo}`)
+			console.log(`[refs]: ${refs.length} ${this.repo}`)
 		}
 		if (refs.length == 0) {
-			console.warn(`WARN: No '${refFilter}' refs present in ${repo}`)
+			console.warn(`WARN: No '${refFilter}' refs present in ${this.repo}`)
 			return null
 		}
 		if (!isWildcard) {
-			const matchingRefs = refs.filter(r => r.name === ref)
+			const matchingRefs = refs.filter(r => r.name === this.ref)
 			if (matchingRefs.length == 0) {
-				console.warn(`WARN: refs received from ${repo}, but none matched '${ref}'. Returned refs: ${JSON.stringify(refs)}`)
+				console.warn(`WARN: refs received from ${this.repo}, but none matched '${this.ref}'. Returned refs: ${JSON.stringify(refs)}`)
 				return null
 			} else if (matchingRefs.length > 1) {
-				console.warn(`WARN: ${matchingRefs.length} matches for '${ref}' in ${repo}`)
+				console.warn(`WARN: ${matchingRefs.length} matches for '${this.ref}' in ${this.repo}`)
 			}
 			return matchingRefs[0].commit
 		}
@@ -117,7 +154,7 @@ export class GithubSource implements Source {
 			})
 		)
 		if (verbose) {
-			console.log(`[parsed versions]: ${versions.length} ${repo}`)
+			console.log(`[parsed versions]: ${versions.length} ${this.repo}`)
 		}
 		if (versions.length == 0) {
 			console.warn(`WARN: no versions found in refs: ${JSON.stringify(refs.map(r => r.name))}`)
@@ -129,43 +166,29 @@ export class GithubSource implements Source {
 	}
 }
 
-export interface Ref {
+export const GithubSource = {
+	parse(url: string): ImportSpec<GithubImport> | null {
+		const gh = url.match(/^(https:\/\/raw\.githubusercontent\.com)\/([^/]+)\/([^/]+)\/([^/]+)\/([^#]+)(#(.+))?$/)
+		if (gh !== null) {
+			const [_match, prefix, owner, repo, version, path, _hash, spec] = gh
+			const imp = {
+				owner: notNull(owner),
+				repo: notNull(repo),
+				prefix: notNull(prefix),
+				version: notNull(version),
+				spec: spec ? spec : null,
+				path: notNull(path),
+			}
+			return { import: imp, spec: new GithubSpec(imp) }
+		}
+		
+		return null
+	}
+}
+
+interface Ref {
 	name: string,
 	commit: string,
-}
-
-export function parseRef(line: string): Ref {
-	let [commit, name] = line.split('\t', 2)
-	
-	// without refs/heads, refs/tags, etc
-	const shortName = name.replace(/^refs\/[^/]+\//, '')
-
-	if (name.startsWith('refs/tags/')) {
-		// assume immutable; use the friendly name
-		commit = shortName
-	}
-	return { commit, name: shortName }
-}
-
-export function parseGH(url: string): GithubSource | null {
-	const gh = url.match(/^(https:\/\/raw\.githubusercontent\.com)\/([^/]+)\/([^/]+)\/([^/]+)\/([^#]+)(#(.+))?$/)
-	if (gh !== null) {
-		const [_match, prefix, owner, repo, version, path, _hash, spec] = gh
-		return new GithubSource({
-			owner: notNull(owner),
-			repo: notNull(repo),
-			prefix: notNull(prefix),
-			version: notNull(version),
-			spec: spec ? spec : null,
-			path: notNull(path),
-		})
-	}
-	
-	return null
-}
-
-function parse(url: string): Source | null {
-	return parseGH(url)
 }
 
 type AsyncReplacer = (url: string) => Promise<string>
@@ -175,61 +198,57 @@ export class Bumper {
 	verbose: boolean = false
 
 	private fs: FS
-	private cache: { [index: string]: Promise<string|null> } = {}
+	private cache: { [index: string]: Promise<Updater | null> } = {}
+	private changedSources: Set<string> = new Set()
 	private fetchCount: number = 0
-	private changeCount: number = 0
 	
 	constructor(fsOverride?: FS) {
 		this.fs = fsOverride || DenoFS
 	}
 
-	private async replaceURL(url: string): Promise<string> {
-		const source = parse(url)
-		if (source == null) {
-			return url
-		}
-		return this.replaceSource(source).then(repl => repl ?? url)
-	}
-	
-	private async replaceSource(source: Source): Promise<string|null> {
-		const id = source.cacheId()
-		let cached = this.cache[id]
-		if (cached == null) {
-			cached = this.cache[id] = source.resolve(this.verbose).then(r => {
-				if (r !== null) {
-					this.changeCount++
+	private async replaceURL(url: string, sources: Array<AnySource>): Promise<string> {
+		for (const source of sources) {
+			const importSpec = source.parse(url)
+			if (importSpec) {
+				const specId = importSpec.spec.identity
+				let cached = this.cache[specId]
+				if (cached == null) {
+					cached = this.cache[specId] = importSpec.spec.resolve(this.verbose)
+					this.fetchCount++
+					if (this.verbose) {
+						console.warn(`[fetch] ${specId}`)
+					} else {
+						await Deno.stdout.write(Bumper.dot)
+					}
 				}
-				return r
-			})
-			this.fetchCount++
-			if (this.verbose) {
-				console.warn(`[fetch] ${id}`)
-			} else {
-				await Deno.stdout.write(Bumper.dot)
+				const resolved = await cached
+				return resolved ? resolved(importSpec.import) : url
 			}
 		}
-		return cached
+		return url
 	}
 
 	summarize() {
-		console.log(`\n${this.fetchCount} remote imports found, ${this.changeCount} updated`)
+		console.log(`\n${this.fetchCount} remote sources found, ${this.changes()} updated`)
 	}
 	
-	changes(): number { return this.changeCount }
+	changes(): number { return this.changedSources.size }
 	
 	async bumpFile(path: string, replacer?: AsyncReplacer): Promise<boolean> {
-		const defaultReplacer = (url: string) => this.replaceURL(url)
+		const defaultReplacer = (url: string) => this.replaceURL(url, defaultSources)
 		const contents = await this.fs.readTextFile(path)
-		const result = await Bumper.processImportURLs(contents, replacer || defaultReplacer)
-		if (contents !== result) {
-			await this.fs.writeTextFile(path, result)
-			return true
-		} else {
-			return false
+		const result = await this.processImportURLs(contents, replacer || defaultReplacer)
+		const changed = contents !== result
+		if (this.verbose) {
+			console.log(`[${changed ? 'updated' : 'unchanged'}]: ${path}`)
 		}
+		if (changed) {
+			await this.fs.writeTextFile(path, result)
+		}
+		return changed
 	}
 
-	static async processImportURLs(contents: string, fn: AsyncReplacer) {
+	async processImportURLs(contents: string, fn: AsyncReplacer): Promise<string> {
 		const importRe = /( from +['"])(https?:\/\/[^'"]+)(['"];?\s*)$/gm
 
 		// technique from https://stackoverflow.com/questions/52417975/using-promises-in-string-replace
@@ -283,3 +302,7 @@ export interface WalkOptions {
 	skip?: RegExp[]
 	verbose?: boolean
 }
+
+const defaultSources: Array<AnySource> = [
+	GithubSource
+]
