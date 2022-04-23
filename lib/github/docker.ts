@@ -3,7 +3,7 @@ import * as Git from '../git.ts'
 import { Spec } from "../docker/file.ts";
 import { notNull } from '../util/object.ts'
 import { dedupe } from "../util/collection.ts";
-import { buildAll, BuildOptions, TagStrategy } from "../docker/build.ts";
+import { buildAllFromSpec, BuildOptions, TagStrategy } from "../docker/build.ts";
 
 type Options = BuildOptions & { mainBranchName?: string }
 
@@ -50,5 +50,5 @@ export async function _buildOptions(Env: GithubEnv, build: Options = {}): Promis
 }
 
 export async function standardBuild(spec: Spec, build: Options = {}): Promise<void> {
-	await buildAll(spec, await _buildOptions(Env, build))
+	await buildAllFromSpec(spec, await _buildOptions(Env, build))
 }

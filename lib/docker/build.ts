@@ -1,10 +1,14 @@
-import { run } from "../cmd.ts";
+import { run, RunOpts } from "../cmd.ts";
 import { image, Image, ImageExt } from "./image.ts"
-import { MinimalSpec, MinimalStage } from "./file.ts"
+import { Spec, MinimalSpec, MinimalStage, render } from "./file.ts"
 export type { MinimalSpec, MinimalStage }
 
+interface DockerfileLiteral {
+	contents: string
+}
+
 export interface BuildOptions {
-	dockerfile?: string,
+	dockerfile?: string | DockerfileLiteral,
 	root?: string,
 	push?: boolean,
 }
@@ -16,7 +20,15 @@ export interface BuildInvocation extends BuildOptions {
 }
 
 export function _buildCommand(opts: BuildInvocation = { stage: null }): string[] {
-	const cmd = ['docker', 'build', '-f', opts.dockerfile ?? 'Dockerfile']
+	const cmd = ['docker', 'build', '--file']
+
+	const dockerfile = opts.dockerfile ?? 'Dockerfile'
+	if (typeof(dockerfile) === 'object') {
+		cmd.push('-')
+	} else {
+		cmd.push(dockerfile)
+	}
+	
 	if (opts.stage) {
 		cmd.push('--target', opts.stage)
 	}
@@ -34,7 +46,18 @@ export function _buildCommand(opts: BuildInvocation = { stage: null }): string[]
 
 export async function build(opts: BuildInvocation = { stage: null }) {
 	const cmd = _buildCommand(opts)
-	await run(cmd)
+	let stdin: undefined | DockerfileLiteral = undefined
+	if (typeof(opts.dockerfile) === 'object') {
+		stdin = opts.dockerfile
+	}
+	try {
+		await run(cmd, { stdin })
+	} catch(e) {
+		if (stdin) {
+			console.warn("Dockerfile build failed on literal:\n----\n"+stdin.contents+"\n----\n")
+		}
+		throw e
+	}
 
 	const tags = (opts.tags ?? [])
 	for (const tag of tags.slice(1)) {
@@ -70,11 +93,17 @@ export function _applyTagStrategy(spec: MinimalSpec, strategy: TagStrategy, stag
 export async function buildAll(spec: MinimalSpec, opts: TagStrategy & BuildOptions) {
 	// TODO pull prior tags if buildkit inline cache doesn't work right?
 	for (const stage of spec.stages) {
-		const concreteTags = _applyTagStrategy(spec, opts, stage)
 		await build({
 			...opts,
-			...concreteTags,
+			..._applyTagStrategy(spec, opts, stage),
 			stage: stage.name,
 		})
 	}
+}
+
+export async function buildAllFromSpec(spec: Spec, opts: TagStrategy & BuildOptions) {
+	return buildAll(spec, {
+		...opts,
+		dockerfile: { contents: render(spec) }
+	})
 }

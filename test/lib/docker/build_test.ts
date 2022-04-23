@@ -64,7 +64,15 @@ Deno.test('applyTagStrategy', () => {
 Deno.test('buildCommand', () => {
 	assertEquals(_buildCommand({ stage: 'builder' }), [
 		"docker", "build",
-		"-f", "Dockerfile",
+		"--file", "Dockerfile",
+		"--target", "builder",
+		"--build-arg", "BUILDKIT_INLINE_CACHE=1",
+		".",
+	])
+
+	assertEquals(_buildCommand({ stage: 'builder', dockerfile: { contents: 'from scratch' } }), [
+		"docker", "build",
+		"--file", "-",
 		"--target", "builder",
 		"--build-arg", "BUILDKIT_INLINE_CACHE=1",
 		".",

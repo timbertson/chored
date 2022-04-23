@@ -81,17 +81,15 @@ export interface Spec {
 	url: string,
 }
 
-export const Spec = {
-	render(spec: Spec): string {
-		return spec.stages.map(renderStage).join('\n\n')
-	}
+export function render(spec: Spec): string {
+	return spec.stages.map(renderStage).join('\n\n')
 }
 
 export class Dockerfile extends TextFile {
 	spec: Spec
 
 	constructor(spec: Spec, opts?: { path?: string }) {
-		super(opts?.path ?? 'Dockerfile', Spec.render(spec))
+		super(opts?.path ?? 'Dockerfile', render(spec))
 		this.spec = spec
 	}
 }
