@@ -23,6 +23,10 @@ Deno.test("cmd output", async () => {
 	assertEquals(await outAndErr(), { out: '1\n2', err: '3\n4' })
 })
 
+Deno.test("cmd input", async () => {
+	assertEquals((await runOutput(['cat'], { ... noPrint, stdin: { contents: 'hello' }})), 'hello')
+})
+
 Deno.test("cmd pipeLines", async () => {
 	let lines: Array<string> = []
 	const pushLine = (l: string) => lines.push(l)

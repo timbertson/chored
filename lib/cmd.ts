@@ -3,6 +3,7 @@ import { readLines } from "https://deno.land/std@0.133.0/io/buffer.ts"
 import { notNull } from './util/object.ts'
 
 export type Stdio = 'inherit' | 'discard' | 'string' | 'printOnError' | ((line: string) => void)
+export type Stdin = 'inherit' | 'discard' | { contents: string }
 
 export interface RunResult {
 	status: Deno.ProcessStatus,
@@ -13,6 +14,7 @@ export interface RunResult {
 export interface RunOpts {
 	printCommand?: boolean,
 	allowFailure?: boolean,
+	stdin?: Stdin,
 	stdout?: Stdio,
 	stderr?: Stdio,
 	cwd?: string,
@@ -41,6 +43,14 @@ function readAction(stream: StdioStream): OutputAction {
 	}
 }
 
+function writeAction(contents: string): OutputAction {
+	return async function(_: OutputDest, p: Deno.Process) {
+		const stdin = notNull(p.stdin, 'process stdin')
+		stdin.write(new TextEncoder().encode(contents))
+		stdin.close()
+	}
+}
+
 function printOnErrorAction(stream: StdioStream): OutputAction {
 	return async function(output: OutputDest, p: Deno.Process) {
 		await readAction(stream)(output, p)
@@ -51,7 +61,7 @@ function printOnErrorAction(stream: StdioStream): OutputAction {
 }
 
 function pipeAction(stream: StdioStream, fn: (line: string) => void): OutputAction {
-	return async function(output: OutputDest, p: Deno.Process) {
+	return async function(_: OutputDest, p: Deno.Process) {
 		const s = notNull(p[stream])
 		for await (const line of readLines(s)) {
 			fn(line)
@@ -60,24 +70,31 @@ function pipeAction(stream: StdioStream, fn: (line: string) => void): OutputActi
 	}
 }
 
-function parseStdio(stream: StdioStream, stdio: Stdio | null): OutputConfiguration {
+function parseStdio(stream: StdioStream | 'stdin', stdio: Stdio | Stdin | null): OutputConfiguration {
 	const ret: OutputConfiguration = {
 		runOpt: 'inherit',
 		action: noopAction,
 	}
-	if (typeof(stdio) === 'function') {
-		ret.runOpt = 'piped'
-		ret.action = pipeAction(stream, stdio)
-	} else if (stdio === 'discard') {
+	if (stdio === 'discard') {
 		ret.runOpt = 'null'
 	} else if (stdio === 'inherit') {
 		ret.runOpt = 'inherit'
-	} else if (stdio === 'string') {
-		ret.runOpt = 'piped'
-		ret.action = readAction(stream)
-	} else if (stdio === 'printOnError') {
-		ret.runOpt = 'piped'
-		ret.action = printOnErrorAction(stream)
+	} else if (stream === 'stdin') {
+		if (typeof(stdio) === 'object' && stdio != null && Object.hasOwn(stdio, 'contents')) {
+			ret.runOpt = 'piped'
+			ret.action = writeAction(stdio.contents)
+		}
+	} else {
+		if (typeof(stdio) === 'function') {
+			ret.runOpt = 'piped'
+			ret.action = pipeAction(stream, stdio)
+		} else if (stdio === 'string') {
+			ret.runOpt = 'piped'
+			ret.action = readAction(stream)
+		} else if (stdio === 'printOnError') {
+			ret.runOpt = 'piped'
+			ret.action = printOnErrorAction(stream)
+		}
 	}
 	return ret
 }
@@ -86,11 +103,13 @@ export async function run(cmd: Array<string>, opts?: RunOpts): Promise<RunResult
 	if (opts?.printCommand !== false) {
 		console.warn(' + ' + cmd.join(' '))
 	}
+	let stdin = parseStdio('stdin', opts?.stdin || null)
 	let stdout = parseStdio('stdout', opts?.stdout || null)
 	let stderr = parseStdio('stderr', opts?.stderr || null)
 
 	const runOpts: Deno.RunOptions = {
 		cmd: cmd,
+		stdin: stdin.runOpt,
 		stdout: stdout.runOpt,
 		stderr: stderr.runOpt,
 		cwd: opts?.cwd,
@@ -101,6 +120,7 @@ export async function run(cmd: Array<string>, opts?: RunOpts): Promise<RunResult
 	const stdoutBuf: OutputDest = { output: null }
 	const stderrBuf: OutputDest = { output: null }
 	await Promise.all([
+		stdin.action({ output: null }, p),
 		stdout.action(stdoutBuf, p),
 		stderr.action(stderrBuf, p),
 	])
