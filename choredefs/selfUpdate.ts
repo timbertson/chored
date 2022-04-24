@@ -60,6 +60,6 @@ export async function push(_: {}) {
 	await runWith(await Update.pushHandler())
 }
 
-export async function main(_: {}) {
+export default async function(_: {}) {
 	await runWith(await Update.noopHandler)
 }

@@ -1,4 +1,4 @@
-import { assertEquals, assertThrows, assertRejects } from './common.ts'
+import { assertEquals, assertThrows, assertRejects, assertMatch } from './common.ts'
 import { DenoFS, FakeFS } from '../lib/fs/impl.ts'
 import { run } from '../lib/cmd.ts'
 import withTempDir from '../lib/fs/with_temp_dir.ts'
@@ -32,15 +32,40 @@ Deno.test("bootstrap", async () => {
 	})
 })
 
+interface MinimalEntrypoint {
+	module: string,
+	fn: string,
+	viaDefault: boolean,
+}
+
+async function resolveEntrypoint(c: Config, main: string[]): Promise<MinimalEntrypoint|Main.NoSuchEntrypoint> {
+	const r = await Main.resolveEntrypoint(c, main)
+	if (Main.isEntrypointFound(r)) {
+		return {
+			module: r.module,
+			fn: r.fn,
+			viaDefault: r.viaDefault
+		}
+	}
+	return r
+}
+
 Deno.test("run", () => withTempDir({}, async (dir) => {
 	await DenoFS.writeTextFile(`${dir}/a.ts`, `
-		export function main(opts: {}) { return "chore a!" }
+		export default function(opts: {}) { return "chore a!" }
 		export function async(opts: {}) { return Promise.resolve("chore a (async)!") }
+	`)
+
+	await DenoFS.writeTextFile(`${dir}/dynamic.ts`, `
+		function module() {
+			return { impl: function(opts: {}) { return "dynamic!" } }
+		}
+		export default module()
 	`)
 
 	await DenoFS.writeTextFile(`${dir}/index.ts`, `
 		export function b(opts: {}) { return "index b!" }
-		export function main(opts: {}) { return "main!" }
+		export default function(opts: {}) { return "main!" }
 	`)
 
 	const moduleURI = (name: string) => `file://${dir}/${name}.ts`
@@ -49,15 +74,16 @@ Deno.test("run", () => withTempDir({}, async (dir) => {
 	assertEquals(await Main.run(config, ['a'], {}), 'chore a!')
 	assertEquals(await Main.run(config, ['a', 'async'], {}), 'chore a (async)!')
 
-	assertEquals(await Main.resolveEntrypoint(config, ['b']), {
-		module: moduleURI('index'), fn: 'b'
+	assertEquals(await resolveEntrypoint(config, ['b']), {
+		module: moduleURI('index'), fn: 'b', viaDefault: false
 	})
 	assertEquals(await Main.run(config, ['b'], {}), 'index b!')
 	assertEquals(await Main.run(config, [], {}), 'main!')
 
+	assertEquals(await Main.run(config, ['dynamic', 'impl'], {}), 'dynamic!')
+
 	// not present in index, fallback
-	assertEquals(await Main.resolveEntrypoint(config, ['c']), {
-		module: replaceSuffix(import.meta.url, 'test/main_test.ts', 'lib/chore/builtins.ts'),
-		fn: 'c'
-	})
+	const notFoundError = await resolveEntrypoint(config, ['c']) as Main.NoSuchEntrypoint
+	assertMatch(notFoundError.errors.join('\n'), /index.ts does not export `c` \(found: b, default\)/)
+	assertMatch(notFoundError.errors.join('\n'), /lib\/chore\/builtins.ts does not export `c`/)
 }))

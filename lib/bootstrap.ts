@@ -5,7 +5,7 @@ const renderModule = import.meta.url.replace(/bootstrap.ts$/, 'render.ts')
 
 const renderTask = `import * as Render from '${renderModule}#main'
 
-export async function main(opts: {}) {
+export default async function(opts: {}) {
   Render.render([
     // TODO add your own generated files
   ])
@@ -29,7 +29,7 @@ export async function install() {
 
 	const render = await import(`file://${Deno.cwd()}/${renderPath}`)
 	console.log("Running render task ...")
-	await render.main({})
+	await render.default({})
 }
 
 if (import.meta.main) {

@@ -7,7 +7,7 @@ export function notNull<T>(v: T|undefined|null, desc?: string): T {
 	return v
 }
 
-type Partial<T> = {
+export type Partial<T> = {
 	[P in keyof T]?: T[P];
 }
 

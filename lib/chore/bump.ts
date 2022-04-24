@@ -18,4 +18,6 @@ export function bumpWith(extraDefaults: Options): (_: Options) => Promise<void> 
 	}
 }
 
-export const main: (opts: Options) => Promise<void> = bumpWith({})
+export default function(opts: Options): (_: Options) => Promise<void> {
+	return bumpWith({})
+}

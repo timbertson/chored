@@ -1,4 +1,4 @@
 import { lock } from '../lock.ts'
-export function main(opts: {}): Promise<void> {
+export default function(opts: {}): Promise<void> {
 	return lock()
 }

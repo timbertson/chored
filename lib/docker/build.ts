@@ -1,4 +1,4 @@
-import { run, RunOpts } from "../cmd.ts";
+import { run } from "../cmd.ts";
 import { image, Image, ImageExt } from "./image.ts"
 import { Spec, MinimalSpec, MinimalStage, render } from "./file.ts"
 export type { MinimalSpec, MinimalStage }

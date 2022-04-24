@@ -47,7 +47,7 @@ Chores are simply functions that accept a single `options` argument. Export a `m
 
 ```ts
 // choredefs/greet.ts
-export function main(opts: { name: string, home: string }) {
+export default function(opts: { name: string, home: string }) {
 	console.log(`Hello, ${opts.name}. I see your home directory is ${opts.home}`)
 }
 ```
@@ -71,10 +71,10 @@ export * from 'https://raw.githubusercontent.com/timbertson/chored/main/choredef
 You can also import the third party chore but expose a wrapper function, which passes options specific to your project, for example.
 
 ```ts
-import { main as greet } from 'https://raw.githubusercontent.com/timbertson/chored/main/choredefs/greet.ts'
+import { default as greet } from 'https://raw.githubusercontent.com/timbertson/chored/main/choredefs/greet.ts'
 
 // I don't know why you want to hardcode the user's name, but that's examples for you...
-export function main(opts: {}) {
+export default function(opts: {}) {
 	return greet({ name: "tim" })
 }
 ```

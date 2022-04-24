@@ -3,7 +3,7 @@ import { wrapperScript, bootstrapText } from '../lib/render/bootstrap.ts'
 import { workflow as ci } from './lib/ci.ts'
 import { file as Dockerfile } from './docker.ts'
 
-export async function main(_: {}): Promise<void> {
+export default async function(_: {}): Promise<void> {
 	return render([
 		new JSONFile("example/generated.json", { generated: true }),
 		new YAMLFile("example/generated.yaml", { generated: true }),

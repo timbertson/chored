@@ -10,6 +10,6 @@ export const file = new Dockerfile({
 	path: 'example/Dockerfile',
 })
 
-export async function main(opts: {}) {
+export default async function(opts: {}) {
 	await standardBuild(file.spec, { root: 'example', dockerfile: file.path })
 }

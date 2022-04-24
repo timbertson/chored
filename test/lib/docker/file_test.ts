@@ -16,7 +16,7 @@ Deno.test('spec render', () => {
 		]
 	}
 
-	assertEquals(D.Spec.render(spec),
+	assertEquals(D.render(spec),
 	` FROM ubuntu as builder
 		RUN echo "test case" > /hello
 		
