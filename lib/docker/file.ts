@@ -6,7 +6,25 @@ export interface Step {
 	rawStep: string,
 }
 export const Step = {
-	raw: (rawStep: string): Step => ({ rawStep })
+	raw: (rawStep: string): Step => ({ rawStep }),
+	directive: (d: string, line: string): Step => ({ rawStep: `${d} ${line}` }),
+
+	run: (cmd: string[]): Step => Step.directive('RUN', JSON.stringify(cmd)),
+
+	runSh: (sh: string): Step => Step.directive('RUN', sh),
+
+	cmd: (cmd: string[]): Step => Step.directive('CMD', JSON.stringify(cmd)),
+
+	workdir: (path: string): Step => Step.directive('WORKDIR', path),
+
+	user: (user: string): Step => Step.directive('USER', user),
+	
+	copy: (src: string, dest: string): Step => Step.directive('COPY', `${src} ${dest}`),
+
+	copyTo: (src: string, prefix: string): Step => Step.directive('COPY', `${src} ${prefix}/${src}`),
+
+	copyFrom: (image: ImageSource, src: string, dest: string): Step =>
+		Step.directive('COPY', `--from=${ImageExt.showSource(image)} ${src} ${dest}`),
 }
 
 // either a public image or another stage within the same dockerfile
@@ -40,31 +58,31 @@ export class StageExt implements Stage {
 		this.tagSuffix = props.tagSuffix
 	}
 	
-	rawStep(name: string, line: string): this {
-		this.steps.push(Step.raw(`${name} ${line}`))
+	push(step: Step): this {
+		this.steps.push(step)
 		return this
 	}
 
-	run(cmd: string[]): this { return this.rawStep('RUN', JSON.stringify(cmd)) }
-
-	runSh(sh: string): this { return this.rawStep('RUN', sh) }
-
-	cmd(cmd: string[]): this { return this.rawStep('CMD', JSON.stringify(cmd)) }
-
-	workdir(path: string): this { return this.rawStep('WORKDIR', path) }
-
-	user(user: string): this { return this.rawStep('USER', user) }
-	
-
-	copy(src: string, dest: string): this { return this.rawStep('COPY', `${src} ${dest}`) }
-
-	copyTo(src: string, prefix: string): this {
-		return this.rawStep('COPY', `${src} ${prefix}/${src}`)
+	pushAll(steps: Step[]): this {
+		this.steps = this.steps.concat(steps)
+		return this
 	}
 
-	copyFrom(image: ImageSource, src: string, dest: string): this {
-		return this.rawStep('COPY', `--from=${ImageExt.showSource(image)} ${src} ${dest}`)
-	}
+	run(cmd: string[]): this { return this.push(Step.run(cmd)) }
+
+	runSh(sh: string): this { return this.push(Step.runSh(sh)) }
+
+	cmd(cmd: string[]): this { return this.push(Step.cmd(cmd)) }
+
+	workdir(path: string): this { return this.push(Step.workdir(path)) }
+
+	user(user: string): this { return this.push(Step.user(user)) }
+
+	copy(src: string, dest: string): this { return this.push(Step.copy(src, dest)) }
+
+	copyTo(src: string, prefix: string): this { return this.push(Step.copyTo(src, prefix)) }
+
+	copyFrom(image: ImageSource, src: string, dest: string): this { return this.push(Step.copyFrom(image, src, dest)) }
 }
 
 export function stage(name: string, props: { from: ImageSource }): StageExt {

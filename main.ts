@@ -27,7 +27,7 @@ export interface Entrypoint {
 }
 
 export interface NoSuchEntrypoint {
-	errors: string[],
+	candidates: string[],
 }
 
 export function isEntrypointFound(candidate: Entrypoint | NoSuchEntrypoint): candidate is Entrypoint {
@@ -58,9 +58,9 @@ async function resolveEntrypointSymbol(module: string, fn: string, chainError?: 
 		)
 	}
 	
-	const thisError = [ `Module ${module} does not export \`${fn}\` (found: ${dedupe(allExports).join(', ')})` ]
-	const allErrors = chainError ? chainError.errors.concat(thisError) : thisError
-	return { errors: allErrors }
+	const thisError = [ `${module} symbol '${fn}' (found: ${dedupe(allExports).join(', ')})` ]
+	const allCandidates = chainError ? chainError.candidates.concat(thisError) : thisError
+	return { candidates: allCandidates }
 }
 
 export async function resolveEntrypoint(config: Config, main: Array<string>, fsOverride?: FS): Promise<Entrypoint | NoSuchEntrypoint> {
@@ -121,7 +121,7 @@ export async function run(config: Config, main: Array<string>, opts: RunOpts): P
 	if (isEntrypointFound(entrypoint)) {
 		return runResolved(entrypoint, opts)
 	} else {
-		throw new Error(`Entrypoint not found:\n  ${entrypoint.errors.join('\n  ')}`)
+		throw new Error(`Chore ${JSON.stringify(main)} not found. Searched:\n - ${entrypoint.candidates.join('\n - ')}`)
 	}
 }
 

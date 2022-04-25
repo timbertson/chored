@@ -29,6 +29,10 @@ export class RawFile extends BaseFile<string> implements File {
 	}
 }
 
+export class CFile extends TextFile {
+	headerLinePrefix: string = "//"
+}
+
 export class ExecutableFile extends TextFile {
 	executable: boolean = true
 }
