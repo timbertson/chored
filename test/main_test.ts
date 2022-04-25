@@ -84,6 +84,6 @@ Deno.test("run", () => withTempDir({}, async (dir) => {
 
 	// not present in index, fallback
 	const notFoundError = await resolveEntrypoint(config, ['c']) as Main.NoSuchEntrypoint
-	assertMatch(notFoundError.errors.join('\n'), /index.ts does not export `c` \(found: b, default\)/)
-	assertMatch(notFoundError.errors.join('\n'), /lib\/chore\/builtins.ts does not export `c`/)
+	assertMatch(notFoundError.candidates.join('\n'), /index.ts symbol 'c', found \["b","default"\]/)
+	assertMatch(notFoundError.candidates.join('\n'), /lib\/chore\/builtins.ts symbol 'c'/)
 }))

@@ -86,6 +86,9 @@ export class GithubSpec implements Spec {
 		this.repo = repo // only used in testing
 		const version = await this.resolveLatestVersion(verbose)
 		if (version) {
+			if (verbose) {
+				console.log(`[version] ${version} ${this.identity}`)
+			}
 			return updater<GithubImport>((imp: GithubImport) =>
 				GithubSpec.addSpec(imp, `${imp.prefix}/${imp.owner}/${imp.repo}/${version}/${imp.path}`)
 			)
@@ -126,6 +129,9 @@ export class GithubSpec implements Spec {
 		await run(cmd, { stdout: processLine, printCommand: verbose })
 		if (verbose) {
 			console.log(`[refs]: ${refs.length} ${this.repo}`)
+			for (const ref of refs) {
+				console.log(`[ref]: ${ref.name} ${ref.commit}`)
+			}
 		}
 		if (refs.length == 0) {
 			console.warn(`WARN: No '${refFilter}' refs present in ${this.repo}`)
@@ -279,6 +285,7 @@ export async function bump(roots: Array<string>, opts: WalkOptions = {}): Promis
 	const bumper = new Bumper()
 	bumper.verbose = opts.verbose ?? false
 	for (const root of roots) {
+		if (opts.verbose === true) console.log(`[walk] root: ${root}`)
 		const rootStat = await Deno.stat(root)
 		if (rootStat.isDirectory) {
 			for await (const entry of walk(root, { ... opts, followSymlinks: false, includeDirs: false })) {

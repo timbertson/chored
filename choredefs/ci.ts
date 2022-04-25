@@ -1,15 +1,12 @@
 import render from './render.ts'
 import test from './test.ts'
-import { requireCleanAround } from '../lib/git.ts'
+import { requireCleanAroundIf } from '../lib/git.ts'
 
 export default async function(opts: { requireClean?: boolean }) {
-	const action = async () => {
+	await requireCleanAroundIf(opts.requireClean === true, { description: './chored precommit', includeUntracked: true }, async () => {
 		await Promise.all([
 			test({}),
 			render({}),
 		])
-	}
-
-	const requireClean = opts.requireClean === true
-	return requireClean ? requireCleanAround({ description: './chored precommit', includeUntracked: true }, action) : action()
+	})
 }

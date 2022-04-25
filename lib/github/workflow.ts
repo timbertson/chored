@@ -1,5 +1,7 @@
 import { Workflow, Step, Job } from './schema.ts'
+export type { Workflow, Step, Job }
 import { nonEmpty } from './step.ts'
+export * from './step.ts'
 
 export function pullRequestAndBranches(...branches: string[]) {
 	return {

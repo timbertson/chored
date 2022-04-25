@@ -18,7 +18,7 @@ export interface Options {
 	update: () => Promise<void>,
 	commitMessage: string,
 	gitDir?: string,
-	handler?: Handler | null,
+	handler?: Handler,
 }
 
 export async function selfUpdate(opts: Options): Promise<boolean> {
@@ -48,19 +48,23 @@ export async function selfUpdate(opts: Options): Promise<boolean> {
 	return changed
 }
 
+
 export interface PushOptions {
 	forcePush?: boolean,
 	remote?: string,
 	branchName?: string,
 }
 
-export interface PullRequestOptions extends PushOptions {
+interface CommonPullRequestOptions extends PushOptions {
 	baseBranch: string,
 	branchName: string,
-	githubToken: string
 	prTitle: string
 	prBody: string
 	repository?: Env.Repository
+}
+
+export interface PullRequestOptions extends CommonPullRequestOptions {
+	githubToken: string
 }
 
 type MakePushHandler = (opts?: PushOptions) => Handler
@@ -164,3 +168,29 @@ export const pullRequestHandler = _makePullRequestHandler({
 	runCommand: realEnv.runCommand,
 	makeClient: GH.Client,
 })
+
+export interface PartialPullRequestOptions extends CommonPullRequestOptions {
+	githubToken?: string
+}
+
+export type Mode = 'noop'|'pr'|'push'
+
+export async function standardSelfUpdate(opts: Options & {
+	pr: PartialPullRequestOptions,
+	push?: PushOptions,
+	mode: Mode
+}): Promise<boolean> {
+	let handler = noopHandler
+	if (opts.mode == 'pr') {
+		handler = await pullRequestHandler({
+			...opts.pr,
+			githubToken: notNull(opts.pr.githubToken, 'githubToken'),
+		})
+	} else if (opts.mode === 'push') {
+		handler = pushHandler(opts.push)
+	}
+	return selfUpdate({
+		... opts,
+		handler
+	})
+}

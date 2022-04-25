@@ -97,12 +97,24 @@ export async function requireClean(opts?: RequireCleanOptions): Promise<void> {
 	}
 }
 
+export async function requireCleanIf(condition: boolean, opts?: RequireCleanOptions): Promise<void> {
+	return condition ? Promise.resolve() : requireClean(opts)
+}
+
 export async function requireCleanAround<T>(opts: RequireCleanOptions, action: () => Promise<T>): Promise<T> {
 	const desc = opts.description ?? 'action'
 	await requireClean(merge(opts, { description: `before ${desc}` }))
 	const result = await action()
 	await requireClean(merge(opts, { description: `after ${desc}`}))
 	return result
+}
+
+export async function requireCleanAroundIf<T>(condition: boolean, opts: RequireCleanOptions, action: () => Promise<T>): Promise<T> {
+	if (condition) {
+		return await requireCleanAround(opts, action)
+	} else {
+		return await action()
+	}
 }
 
 export async function branchName(options?: CommonOptions): Promise<string | null> {

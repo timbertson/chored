@@ -58,7 +58,7 @@ async function resolveEntrypointSymbol(module: string, fn: string, chainError?: 
 		)
 	}
 	
-	const thisError = [ `${module} symbol '${fn}' (found: ${dedupe(allExports).join(', ')})` ]
+	const thisError = [ `${module} symbol '${fn}', found ${JSON.stringify(dedupe(allExports))}` ]
 	const allCandidates = chainError ? chainError.candidates.concat(thisError) : thisError
 	return { candidates: allCandidates }
 }
