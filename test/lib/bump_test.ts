@@ -1,10 +1,11 @@
 import { assertEquals } from '../common.ts'
 import { notNull } from '../../lib/util/object.ts'
 import { trimIndent } from '../../lib/util/string.ts'
-import { FakeFS } from '../../lib/fs/impl.ts'
+import { DenoFS, FakeFS } from '../../lib/fs/impl.ts'
 import { run } from '../../lib/cmd.ts'
 
-import { Bumper, GithubSource, GithubSpec, ImportSpec, GithubImport, _updater } from '../../lib/bump.ts'
+import { Bumper, GithubSource, GithubSpec, ImportSpec, GithubImport, _updater, Source, TestImport } from '../../lib/bump.ts'
+import withTempDir from "../../lib/fs/with_temp_dir.ts";
 
 const url = (r: string, p?: { spec?: string, repo?: string, path?: string }) => {
 	const base = `https://raw.githubusercontent.com/${p?.repo ?? 'timbertson/chored'}/${r}/${p?.path ?? 'lib/README.md'}`
@@ -155,12 +156,12 @@ Deno.test('bump import map', async () => {
 	addUpdater(parseGH(url('v2.0.0')))
 	addUpdater(parseGH(url('HEAD', { repo: 'foo/bar' })))
 	
-	const sources: { [index: string]: string } = {}
+	const imports: { [index: string]: string } = {}
 	const path = 'index.json'
-	sources[url('v1.2.0', { path: ''})] = '../chored'
-	sources[url('abcd1234', { repo: 'foo/bar', path: ''})] = '../bar'
-	sources['fs'] = 'nodejs:fs'
-	await fs.writeTextFile(path, JSON.stringify({ sources }))
+	imports[url('v1.2.0', { path: ''})] = '../chored'
+	imports[url('abcd1234', { repo: 'foo/bar', path: ''})] = '../bar'
+	imports['fs'] = 'nodejs:fs'
+	await fs.writeTextFile(path, JSON.stringify({ imports }))
 	await bumper.bumpImportMap(path)
 	assertEquals(await fs.readTextFile(path), trimIndent(`
 	{
@@ -170,3 +171,39 @@ Deno.test('bump import map', async () => {
 	  "https://raw.githubusercontent.com/timbertson/chored/v2.0.0/": "../chored"
 	}`))
 })
+
+Deno.test('bump walk', () => withTempDir({}, async (dir) => {
+	await DenoFS.mkdirp(`${dir}/a/b/c`)
+	await DenoFS.writeTextFile(`${dir}/main.ts`, `
+		export * from 'https://example.com/v1/main.ts'
+	`.trim())
+	await DenoFS.writeTextFile(`${dir}/a/b/c/nested.ts`, `
+		export * from 'https://example.com/v1/lib/nested.ts'
+ `.trim())
+ 	
+ 	const testSource: Source<TestImport> = {
+		parse(url: string) {
+			return {
+				import: { url },
+				spec: {
+					origin: url,
+					identity: url,
+					resolve(verbose: boolean) {
+						return Promise.resolve(_updater<TestImport>(url, (imp: TestImport) => imp.url + "-new"))
+					}
+				}
+			}
+		}
+	}
+
+	const changes = await Bumper._bump([dir], { verbose: false }, [ testSource ])
+	assertEquals(changes, 2)
+	
+	assertEquals(await DenoFS.readTextFile(`${dir}/main.ts`), `
+		export * from 'https://example.com/v1/main.ts-new'
+	`.trim())
+	assertEquals(await DenoFS.readTextFile(`${dir}/a/b/c/nested.ts`), `
+		export * from 'https://example.com/v1/lib/nested.ts-new'
+ `.trim())
+	
+}))

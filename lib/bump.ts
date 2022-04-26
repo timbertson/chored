@@ -26,9 +26,9 @@ export interface GithubImport {
 	repo: string,
 }
 
-// to prove out the tpes work with multiple import types; remove this when we support more thant just GH
-interface TestImport {
-	foo: boolean
+// used in tests
+export interface TestImport {
+	url: string
 }
 
 type AnyImport = GithubImport | TestImport
@@ -255,7 +255,13 @@ export class Bumper {
 				}
 			}
 			const resolved = await cached
-			return resolved ? resolved.apply(importSpec.import) : url
+			if (resolved) {
+				const replacement = resolved.apply(importSpec.import)
+				if (replacement !== url) {
+					this.changedSources.add(specId)
+					return replacement
+				}
+			}
 		}
 		return url
 	}
@@ -272,7 +278,7 @@ export class Bumper {
 		const result = await this.processImports(contents, replacer || defaultReplacer)
 		const changed = contents !== result
 		if (this.verbose) {
-			console.log(`[${changed ? 'updated' : 'unchanged'}]: ${path}`)
+			console.log(`[${changed ? 'modified' : 'unchanged'}]: ${path}`)
 		}
 		if (changed) {
 			await this.fs.writeTextFile(path, result)
@@ -283,23 +289,23 @@ export class Bumper {
 	async bumpImportMap(path: string): Promise<void> {
 		const json = JSON.parse(await this.fs.readTextFile(path))
 		let changed = false
-		if (json && Object.hasOwn(json, 'sources')) {
-			const sources = json.sources
-			const entries: [string, any][] = Array.from(Object.entries(sources))
+		if (json && Object.hasOwn(json, 'imports')) {
+			const imports = json.imports
+			const entries: [string, any][] = Array.from(Object.entries(imports))
 			entries.sort((a, b) => a[0].localeCompare(b[0]))
 			for (const [k,v] of entries) {
 				const newKeys = sort(await this.explodeCachedURLs(k))
 				if (newKeys.length > 0) {
 					changed = true
-					delete sources[k]
+					delete imports[k]
 					for (const newKey of newKeys) {
-						sources[newKey] = v
+						imports[newKey] = v
 					}
 				}
 			}
 		}
 		if (changed) {
-			await this.fs.writeTextFile(path, JSON.stringify(json.sources, null, 2))
+			await this.fs.writeTextFile(path, JSON.stringify(json, null, 2))
 		}
 	}
 
@@ -353,54 +359,59 @@ export class Bumper {
 			}
 		})
 	}
+
+	static async _bump(roots: Array<string>, overrides: WalkOptions = {}, sources?: AnySource[]): Promise<number> {
+		const opts = merge(defaultOptions, overrides)
+		const work: Array<Promise<boolean>> = []
+		const bumper = new Bumper({ sources })
+		bumper.verbose = opts.verbose ?? false
+
+		let exts = opts.exts ?? []
+		const importMapExt = opts.importMapExt
+		let isImportMap = (_: string) => false
+		if (importMapExt != null) {
+			isImportMap = (path: string) => path.endsWith(importMapExt)
+			exts = [ ...exts, importMapExt ]
+		}
+		const importMaps: string[] = []
+		function handle(path: string) {
+			if (opts.verbose === true) {
+				console.warn(`[bump] ${path}`)
+			}
+			if (isImportMap(path)) {
+				importMaps.push(path)
+			} else {
+				work.push(bumper.bumpSourceFile(path))
+			}
+		}
+
+		const walkOpts = { ... opts, exts, followSymlinks: false, includeDirs: false }
+		if (opts.verbose === true) console.log(`[opts] ${JSON.stringify(walkOpts)}`)
+		for (const root of roots) {
+			const rootStat = await Deno.stat(root)
+			if (rootStat.isDirectory) {
+				if (opts.verbose === true) console.log(`[walk] root: ${root}`)
+				for await (const entry of walk(root, walkOpts)) {
+					handle(entry.path)
+				}
+			} else {
+				handle(root)
+			}
+		}
+		await Promise.all(work)
+
+		// now that all sources are bumped, process import maps
+		for (const importMap of importMaps) {
+			await bumper.bumpImportMap(importMap)
+		}
+
+		bumper.summarize()
+		return bumper.changes()
+	}
 }
 
-export async function bump(roots: Array<string>, overrides: WalkOptions = {}): Promise<number> {
-	const opts = merge(defaultOptions, overrides)
-	const work: Array<Promise<boolean>> = []
-	const bumper = new Bumper()
-	bumper.verbose = opts.verbose ?? false
-
-	let exts = opts.exts ?? []
-	const importMapExt = opts.importMapExt
-	let isImportMap = (_: string) => false
-	if (importMapExt != null) {
-		isImportMap = (path: string) => path.endsWith(importMapExt)
-		exts = [ ...exts, importMapExt ]
-	}
-	const importMaps: string[] = []
-	function handle(path: string) {
-		if (opts.verbose === true) {
-			console.warn(`[bump] ${path}`)
-		}
-		if (isImportMap(path)) {
-			importMaps.push(path)
-		} else {
-			work.push(bumper.bumpSourceFile(path))
-		}
-	}
-
-	const walkOpts = { ... opts, exts, followSymlinks: false, includeDirs: false }
-	for (const root of roots) {
-		if (opts.verbose === true) console.log(`[walk] root: ${root}`)
-		const rootStat = await Deno.stat(root)
-		if (rootStat.isDirectory) {
-			for await (const entry of walk(root, walkOpts)) {
-				handle(entry.path)
-			}
-		} else {
-			handle(root)
-		}
-	}
-	await Promise.all(work)
-
-	// now that all sources are bumped, process import maps
-	for (const importMap of importMaps) {
-		await bumper.bumpImportMap(importMap)
-	}
-
-	bumper.summarize()
-	return bumper.changes()
+export async function bump(roots: Array<string>, overrides: WalkOptions = {}): Promise<void> {
+	await Bumper._bump(roots, overrides)
 }
 
 export interface WalkOptions {
@@ -414,7 +425,7 @@ export interface WalkOptions {
 export const defaultOptions : WalkOptions = {
 	exts: ['.ts'],
 	importMapExt: 'map.json',
-	skip: [/^\./],
+	skip: [/^\..+/],
 }
 
 const defaultSources: Array<AnySource> = [
