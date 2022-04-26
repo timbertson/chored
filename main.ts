@@ -65,10 +65,12 @@ async function resolveEntrypointSymbol(module: string, fn: string, chainError?: 
 
 export async function resolveEntrypoint(config: Config, main: Array<string>, fsOverride?: FS): Promise<Entrypoint | NoSuchEntrypoint> {
 	const fs = fsOverride || DenoFS
-	const localPath = (f: string) => `${config.taskRoot}/${f}.ts`
+	const absolute = (f: string) => f.startsWith('/') ? f : `${Deno.cwd()}/${f}`
+	const hasSlash = (f: string) => f.indexOf("/") !== -1
+	const fsPath = (f: string) => hasSlash(f) ? absolute(f) : `${config.taskRoot}/${f}.ts`
 	const isURI = (f: string) => f.lastIndexOf("://") !== -1
-	const isModule = async (f: string) => isURI(f) || await fs.exists(localPath(f))
-	const toURI = (f: string) => isURI(f) ? f : `file://${localPath(f)}`
+	const isModule = async (f: string) => hasSlash(f) || await fs.exists(fsPath(f))
+	const toURI = (f: string) => isURI(f) ? f : `file://${fsPath(f)}`
 	
 	if (main.length == 0) {
 		main = ['default']

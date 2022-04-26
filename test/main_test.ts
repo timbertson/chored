@@ -74,6 +74,10 @@ Deno.test("run", () => withTempDir({}, async (dir) => {
 	assertEquals(await Main.run(config, ['a'], {}), 'chore a!')
 	assertEquals(await Main.run(config, ['a', 'async'], {}), 'chore a (async)!')
 
+	assertEquals(await resolveEntrypoint(config, ['./choredefs/render.ts']), {
+		module: `file://${Deno.cwd()}/./choredefs/render.ts`, fn: 'default', viaDefault: false
+	})
+
 	assertEquals(await resolveEntrypoint(config, ['b']), {
 		module: moduleURI('index'), fn: 'b', viaDefault: false
 	})
