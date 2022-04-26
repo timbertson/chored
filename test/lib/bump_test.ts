@@ -1,9 +1,10 @@
-import { assertEquals, assertExists, assertNotEquals } from '../common.ts'
+import { assertEquals } from '../common.ts'
 import { notNull } from '../../lib/util/object.ts'
+import { trimIndent } from '../../lib/util/string.ts'
 import { FakeFS } from '../../lib/fs/impl.ts'
 import { run } from '../../lib/cmd.ts'
 
-import { Bumper, Source, GithubSource, GithubSpec, ImportSpec, GithubImport } from '../../lib/bump.ts'
+import { Bumper, GithubSource, GithubSpec, ImportSpec, GithubImport, _updater } from '../../lib/bump.ts'
 
 const url = (r: string, p?: { spec?: string, repo?: string, path?: string }) => {
 	const base = `https://raw.githubusercontent.com/${p?.repo ?? 'timbertson/chored'}/${r}/${p?.path ?? 'lib/README.md'}`
@@ -31,6 +32,7 @@ Deno.test('bump parseGH', (t) => {
 	}
 	assertEquals(parseGH(base)?.import, expected)
 	assertEquals(parseGH(base + "#ref")?.import, { ... expected, spec: 'ref' })
+	assertEquals(parseGH(url('SHA', { path: '' }))?.import, { ... expected, path: '' })
 })
 
 const testSha = '7fa1accd89e45af5c7e60f904d9710c9f4024315'
@@ -51,8 +53,8 @@ Deno.test('bump resolve branch', async () => {
 	await run(['git', 'branch', '--force', spec, testSha], { printCommand: false })
 	
 	const update = notNull(await source.spec.resolveFrom('.', false))
-	assertEquals(update(source.import), url(testSha, { spec }))
-	assertEquals(update({ ... source.import, path: 'Dockerfile' }), url(testSha, { spec, path: 'Dockerfile' }))
+	assertEquals(update.apply(source.import), url(testSha, { spec }))
+	assertEquals(update.apply({ ... source.import, path: 'Dockerfile' }), url(testSha, { spec, path: 'Dockerfile' }))
 })
 
 Deno.test('bump resolve wildcard tag', async () => {
@@ -61,7 +63,7 @@ Deno.test('bump resolve wildcard tag', async () => {
 
 	await fetchTestCommit()
 	const update = notNull(await source.spec.resolveFrom('.', false))
-	assertEquals(update(source.import), url(testShaTag, { spec }))
+	assertEquals(update.apply(source.import), url(testShaTag, { spec }))
 })
 
 Deno.test('GithubSource cache identity only cares about repo and spec', () => {
@@ -72,7 +74,7 @@ Deno.test('GithubSource cache identity only cares about repo and spec', () => {
 
 Deno.test('processImportURLs', async () => {
 	const urls: Array<string> = []
-	const replaced = await (new Bumper()).processImportURLs(`
+	const replaced = await (new Bumper()).processImports(`
 		import { foo } from 'https://example.com/mod.ts#main'
 		export * as Mod from "http://example.com/mod.ts";
 		import {
@@ -104,7 +106,7 @@ Deno.test('processImportURLs', async () => {
 
 Deno.test('bumpFile', async () => {
 	const fs = new FakeFS()
-	const bumper = new Bumper(fs)
+	const bumper = new Bumper({ fs })
 	const replacements: { [index: string]: string } = {
 		'http://a1': 'http://A1',
 		'http://a2': 'http://A2',
@@ -122,8 +124,8 @@ Deno.test('bumpFile', async () => {
 	await fs.writeTextFile('b', bContents)
 	const replacer = (url: string) => Promise.resolve(replacements[url] || url)
 	assertEquals(await Promise.all([
-		bumper.bumpFile('a', replacer),
-		bumper.bumpFile('b', replacer),
+		bumper.bumpSourceFile('a', replacer),
+		bumper.bumpSourceFile('b', replacer),
 	]), [ true, false ])
 	
 	assertEquals(await fs.readTextFile('a'), `
@@ -133,4 +135,38 @@ Deno.test('bumpFile', async () => {
 	`)
 
 	assertEquals(await fs.readTextFile('b'), bContents)
+})
+
+Deno.test('bump import map', async () => {
+	const fs = new FakeFS()
+	const bumper = new Bumper({ fs })
+	// bumper.verbose = true
+	
+	function addUpdater(importSpec: ImportSpec<GithubImport>) {
+		bumper.cache[importSpec.spec.identity] = Promise.resolve(_updater<GithubImport>(
+			importSpec.spec.origin,
+			(imp: GithubImport) => GithubSpec.show({ ...imp, version: importSpec.import.version })
+		))
+	}
+	
+	// since we don't know what ref a given mapping corresponded to, we
+	// include the value for each known key. Misses don't cost us anything :shrug:
+	addUpdater(parseGH(url('v1.2.3', { spec: 'v1.*' })))
+	addUpdater(parseGH(url('v2.0.0')))
+	addUpdater(parseGH(url('HEAD', { repo: 'foo/bar' })))
+	
+	const sources: { [index: string]: string } = {}
+	const path = 'index.json'
+	sources[url('v1.2.0', { path: ''})] = '../chored'
+	sources[url('abcd1234', { repo: 'foo/bar', path: ''})] = '../bar'
+	sources['fs'] = 'nodejs:fs'
+	await fs.writeTextFile(path, JSON.stringify({ sources }))
+	await bumper.bumpImportMap(path)
+	assertEquals(await fs.readTextFile(path), trimIndent(`
+	{
+	  "fs": "nodejs:fs",
+	  "https://raw.githubusercontent.com/foo/bar/HEAD/": "../bar",
+	  "https://raw.githubusercontent.com/timbertson/chored/v1.2.3/": "../chored",
+	  "https://raw.githubusercontent.com/timbertson/chored/v2.0.0/": "../chored"
+	}`))
 })

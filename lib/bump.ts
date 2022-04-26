@@ -1,9 +1,11 @@
-import { notNull } from './util/object.ts'
+import { merge, notNull } from './util/object.ts'
+import { sort } from './util/collection.ts'
 import { run } from './cmd.ts'
 import { FS, DenoFS } from './fs/impl.ts';
 import { walk } from './walk.ts'
 import { Version } from './version.ts'
 /*
+ * Based on https://deno.land/x/dmm
  * parse imports
  *
  * bump strategy
@@ -30,19 +32,27 @@ interface TestImport {
 }
 
 type AnyImport = GithubImport | TestImport
+type AnyImportSpec = ImportSpec<GithubImport> | ImportSpec<TestImport>
 type AnySource = Source<GithubImport>|Source<TestImport>
 
 // This would be nicer with a GADT to show a spec could oly be invoked with
 // its corresponding import type, but that sounds too hard
-type Updater = (imp: AnyImport) => string
-function updater<Import extends AnyImport>(fn: (imp: Import) => string): Updater {
-	return function(anyImport: AnyImport): string {
-		return fn(anyImport as Import)
+interface Updater {
+	origin: string,
+	apply: (imp: AnyImport) => string,
+}
+export function _updater<Import extends AnyImport>(origin: string, fn: (imp: Import) => string): Updater {
+	return {
+		origin,
+		apply: function(anyImport: AnyImport): string {
+			return fn(anyImport as Import)
+		}
 	}
 }
 
 // a specific spec (e.g. github repo & branch)
 export interface Spec {
+	origin: string,
 	identity: string,
 	resolve(verbose: boolean): Promise<Updater | null>
 }
@@ -58,16 +68,22 @@ export interface Source<Import> {
 
 export class GithubSpec implements Spec {
 	identity: string
+	origin: string
 	repo: string
 	ref: string | null
 
 	constructor(imp: {spec: string | null, owner: string, repo: string}) {
 		this.ref = imp.spec
-		this.identity = GithubSpec.addSpec(imp, `github:${imp.owner}/${imp.repo}`)
+		this.origin = `github:${imp.owner}/${imp.repo}`
+		this.identity = GithubSpec.addSpec(imp, this.origin)
 
 		// TODO: use https if there's known creds, otherwise ssh?
 		// TODO: reuse deno's credentials system for transparently accessing private repos
 		this.repo = `git@github.com:${imp.owner}/${imp.repo}.git`
+	}
+
+	static show(imp: GithubImport): string {
+		return GithubSpec.addSpec(imp, `${imp.prefix}/${imp.owner}/${imp.repo}/${imp.version}/${imp.path}`)
 	}
 
 	private static addSpec(imp: { spec: string | null }, s: string): string {
@@ -89,8 +105,8 @@ export class GithubSpec implements Spec {
 			if (verbose) {
 				console.log(`[version] ${version} ${this.identity}`)
 			}
-			return updater<GithubImport>((imp: GithubImport) =>
-				GithubSpec.addSpec(imp, `${imp.prefix}/${imp.owner}/${imp.repo}/${version}/${imp.path}`)
+			return _updater<GithubImport>(this.origin,
+				(imp: GithubImport) => GithubSpec.show({ ...imp, version })
 			)
 		} else {
 			return null
@@ -174,7 +190,7 @@ export class GithubSpec implements Spec {
 
 export const GithubSource = {
 	parse(url: string): ImportSpec<GithubImport> | null {
-		const gh = url.match(/^(https:\/\/raw\.githubusercontent\.com)\/([^/]+)\/([^/]+)\/([^/]+)\/([^#]+)(#(.+))?$/)
+		const gh = url.match(/^(https:\/\/raw\.githubusercontent\.com)\/([^/]+)\/([^/]+)\/([^/]+)\/([^#]*)(#(.+))?$/)
 		if (gh !== null) {
 			const [_match, prefix, owner, repo, version, path, _hash, spec] = gh
 			const imp = {
@@ -204,32 +220,42 @@ export class Bumper {
 	verbose: boolean = false
 
 	private fs: FS
-	private cache: { [index: string]: Promise<Updater | null> } = {}
+	private sources: AnySource[]
+	cache: { [index: string]: Promise<Updater | null> } = {}
 	private changedSources: Set<string> = new Set()
 	private fetchCount: number = 0
 	
-	constructor(fsOverride?: FS) {
-		this.fs = fsOverride || DenoFS
+	constructor(opts?: { sources?: Array<AnySource>, fs?: FS }) {
+		this.sources = opts?.sources ?? defaultSources
+		this.fs = opts?.fs ?? DenoFS
 	}
 
-	private async replaceURL(url: string, sources: Array<AnySource>): Promise<string> {
-		for (const source of sources) {
+	private parse(url: string): AnyImportSpec | null {
+		for (const source of this.sources) {
 			const importSpec = source.parse(url)
 			if (importSpec) {
-				const specId = importSpec.spec.identity
-				let cached = this.cache[specId]
-				if (cached == null) {
-					cached = this.cache[specId] = importSpec.spec.resolve(this.verbose)
-					this.fetchCount++
-					if (this.verbose) {
-						console.warn(`[fetch] ${specId}`)
-					} else {
-						await Deno.stdout.write(Bumper.dot)
-					}
-				}
-				const resolved = await cached
-				return resolved ? resolved(importSpec.import) : url
+				return importSpec
 			}
+		}
+		return null
+	}
+
+	private async replaceURL(url: string): Promise<string> {
+		const importSpec = this.parse(url)
+		if (importSpec) {
+			const specId = importSpec.spec.identity
+			let cached = this.cache[specId]
+			if (cached == null) {
+				cached = this.cache[specId] = importSpec.spec.resolve(this.verbose)
+				this.fetchCount++
+				if (this.verbose) {
+					console.warn(`[fetch] ${specId}`)
+				} else {
+					await Deno.stdout.write(Bumper.dot)
+				}
+			}
+			const resolved = await cached
+			return resolved ? resolved.apply(importSpec.import) : url
 		}
 		return url
 	}
@@ -240,10 +266,10 @@ export class Bumper {
 	
 	changes(): number { return this.changedSources.size }
 	
-	async bumpFile(path: string, replacer?: AsyncReplacer): Promise<boolean> {
-		const defaultReplacer = (url: string) => this.replaceURL(url, defaultSources)
+	async bumpSourceFile(path: string, replacer?: AsyncReplacer): Promise<boolean> {
+		const defaultReplacer = (url: string) => this.replaceURL(url)
 		const contents = await this.fs.readTextFile(path)
-		const result = await this.processImportURLs(contents, replacer || defaultReplacer)
+		const result = await this.processImports(contents, replacer || defaultReplacer)
 		const changed = contents !== result
 		if (this.verbose) {
 			console.log(`[${changed ? 'updated' : 'unchanged'}]: ${path}`)
@@ -253,8 +279,57 @@ export class Bumper {
 		}
 		return changed
 	}
+	
+	async bumpImportMap(path: string): Promise<void> {
+		const json = JSON.parse(await this.fs.readTextFile(path))
+		let changed = false
+		if (json && Object.hasOwn(json, 'sources')) {
+			const sources = json.sources
+			const entries: [string, any][] = Array.from(Object.entries(sources))
+			entries.sort((a, b) => a[0].localeCompare(b[0]))
+			for (const [k,v] of entries) {
+				const newKeys = sort(await this.explodeCachedURLs(k))
+				if (newKeys.length > 0) {
+					changed = true
+					delete sources[k]
+					for (const newKey of newKeys) {
+						sources[newKey] = v
+					}
+				}
+			}
+		}
+		if (changed) {
+			await this.fs.writeTextFile(path, JSON.stringify(json.sources, null, 2))
+		}
+	}
 
-	async processImportURLs(contents: string, fn: AsyncReplacer): Promise<string> {
+	private async explodeCachedURLs(url: string): Promise<string[]> {
+		const rv = []
+		const importSpec = this.parse(url)
+		if (!importSpec) {
+			if (this.verbose) {
+				console.log("Invalid URL: ", url)
+			}
+			return []
+		}
+
+		const origin = importSpec.spec.origin
+		for (const updaterPromise of Object.values(this.cache)) {
+			const updater = await updaterPromise
+			if (updater && updater.origin === origin) {
+				const replaced = updater.apply(importSpec.import)
+				if (replaced !== url) {
+					rv.push(replaced)
+				}
+			}
+		}
+		if (this.verbose) {
+			console.log(`[import] ${JSON.stringify(url)} => ${JSON.stringify(rv)}`)
+		}
+		return rv
+	}
+
+	async processImports(contents: string, fn: AsyncReplacer): Promise<string> {
 		const importRe = /( from +['"])(https?:\/\/[^'"]+)(['"];?\s*)$/gm
 
 		// technique from https://stackoverflow.com/questions/52417975/using-promises-in-string-replace
@@ -280,34 +355,66 @@ export class Bumper {
 	}
 }
 
-export async function bump(roots: Array<string>, opts: WalkOptions = {}): Promise<number> {
+export async function bump(roots: Array<string>, overrides: WalkOptions = {}): Promise<number> {
+	const opts = merge(defaultOptions, overrides)
 	const work: Array<Promise<boolean>> = []
 	const bumper = new Bumper()
 	bumper.verbose = opts.verbose ?? false
+
+	let exts = opts.exts ?? []
+	const importMapExt = opts.importMapExt
+	let isImportMap = (_: string) => false
+	if (importMapExt != null) {
+		isImportMap = (path: string) => path.endsWith(importMapExt)
+		exts = [ ...exts, importMapExt ]
+	}
+	const importMaps: string[] = []
+	function handle(path: string) {
+		if (opts.verbose === true) {
+			console.warn(`[bump] ${path}`)
+		}
+		if (isImportMap(path)) {
+			importMaps.push(path)
+		} else {
+			work.push(bumper.bumpSourceFile(path))
+		}
+	}
+
+	const walkOpts = { ... opts, exts, followSymlinks: false, includeDirs: false }
 	for (const root of roots) {
 		if (opts.verbose === true) console.log(`[walk] root: ${root}`)
 		const rootStat = await Deno.stat(root)
 		if (rootStat.isDirectory) {
-			for await (const entry of walk(root, { ... opts, followSymlinks: false, includeDirs: false })) {
-				if (opts.verbose === true) {
-					console.warn(`[bump] ${entry.path}`)
-				}
-				work.push(bumper.bumpFile(entry.path))
+			for await (const entry of walk(root, walkOpts)) {
+				handle(entry.path)
 			}
 		} else {
-			work.push(bumper.bumpFile(root))
+			handle(root)
 		}
 	}
 	await Promise.all(work)
+
+	// now that all sources are bumped, process import maps
+	for (const importMap of importMaps) {
+		await bumper.bumpImportMap(importMap)
+	}
+
 	bumper.summarize()
 	return bumper.changes()
 }
 
 export interface WalkOptions {
 	exts?: string[]
+	importMapExt?: string | null
 	match?: RegExp[]
 	skip?: RegExp[]
 	verbose?: boolean
+}
+
+export const defaultOptions : WalkOptions = {
+	exts: ['.ts'],
+	importMapExt: 'map.json',
+	skip: [/^\./],
 }
 
 const defaultSources: Array<AnySource> = [

@@ -91,7 +91,7 @@ So you can write:
 import { greet } from 'https://raw.githubusercontent.com/timbertson/chored/main/choredefs/greet.ts#main'
 ```
 
-..and then run `./chored bump`. That'll replace `main` in the URL with the current cmmit SHA on that branch. The `#main` will remain, so that it knows which branch to track on future runs.
+..and then run `./chored bump`. That'll replace `main` in the URL with the current commit SHA on that branch. The `#main` will remain, so that it knows which branch to track on future runs.
 
 You can also use a wildcard for tags, e.g. `#v1.2.*` for a crude emulation of semver.
 
