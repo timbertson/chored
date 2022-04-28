@@ -9,7 +9,6 @@ Deno.test('docker run command', () => {
 		"docker",
 		"run",
 		"--rm",
-		"--tty",
 		"--interactive",
 		"ubuntu",
 	])

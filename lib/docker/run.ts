@@ -32,6 +32,7 @@ function bindVolume(v: BindMount): Volume {
 
 export interface RunOptions {
 	image: Image,
+	tty?: boolean,
 	cmd?: string[],
 	volumes?: Volume[],
 	workDir?: string,
@@ -43,7 +44,10 @@ export async function run(opts: RunOptions) {
 }
 
 export function _command(opts: RunOptions): string[] {
-	let cmd = ['docker', 'run', '--rm', '--tty', '--interactive']
+	let cmd = ['docker', 'run', '--rm', '--interactive']
+	if (opts.tty === true) {
+		cmd.push('--tty')
+	}
 
 	const volumes = (opts.volumes ?? []).concat((opts.bindMounts ?? []).map(bindVolume))
 	for (const volume of volumes) {
