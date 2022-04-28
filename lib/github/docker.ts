@@ -3,7 +3,8 @@ import * as Git from '../git.ts'
 import { Spec } from "../docker/file.ts";
 import { notNull } from '../util/object.ts'
 import { dedupe } from "../util/collection.ts";
-import { buildAllFromSpec, BuildOptions, TagStrategy } from "../docker/build.ts";
+import { buildAllFromSpec, BuildOptions, TagStrategy, MinimalSpec, MinimalStage, _applyTag } from "../docker/build.ts";
+import { Image } from "../docker/image.ts";
 
 type Options = BuildOptions & { mainBranchName?: string }
 
@@ -16,37 +17,51 @@ export interface GithubEnv {
 	isCI: boolean
 }
 
+function primaryTag(Env: GithubEnv): string {
+	return (Env.isCI) ? notNull(Env.triggerCommitSHA) : 'development'
+}
+
 export async function _buildOptions(Env: GithubEnv, build: Options = {}): Promise<TagStrategy & BuildOptions> {
-	let tags = ['development']
+	let secondaryTags: string[] = []
 
 	// In github, we cache from:
 	// - the main branch
 	const maybeCacheFrom: Array<string|null> = [ 'latest' ]
 
 	if (Env.isCI) {
-		tags = [
-			notNull(Env.triggerCommitSHA),
-		]
-
 		if (Env.pullRequestBranch !== null) {
 			maybeCacheFrom.push(Env.pullRequestBranch, Env.pullRequestTarget)
-			tags.push(notNull(Env.pullRequestBranch))
+			secondaryTags.push(notNull(Env.pullRequestBranch))
 		} else {
-			tags.push(notNull(Env.triggerRefName))
+			secondaryTags.push(notNull(Env.triggerRefName))
 			maybeCacheFrom.push(Env.triggerRefName)
 		}
 		
 		// Sure would be nice if github exposed this in an envvar or something :/
 		const mainBranches = build.mainBranchName ? [ build.mainBranchName ] : [ 'main', 'master' ]
 		if (Env.pushedBranch && mainBranches.indexOf(Env.pushedBranch) !== -1) {
-			tags.push('latest')
+			secondaryTags.push('latest')
 		}
 	} else {
-		maybeCacheFrom.push('latest', await Git.branchName())
+		maybeCacheFrom.push(await Git.branchName())
 	}
 	
 	const cacheFrom = dedupe(maybeCacheFrom.flatMap(x => x != null ? [x] : []))
+	const tags = [ primaryTag(Env) ].concat(secondaryTags)
 	return { tags, cacheFrom , push: Env.isCI, ...build }
+}
+
+export function imageForStage(spec: MinimalSpec, stageSpec: MinimalStage | number | 'last' = 'last'): Image {
+	let stage: MinimalStage
+	if (stageSpec === 'last') {
+		stageSpec = spec.stages.length - 1
+	}
+	if (typeof(stageSpec) === 'number') {
+		stage = notNull(spec.stages[stageSpec])
+	} else {
+		stage = stageSpec as MinimalStage
+	}
+	return _applyTag(primaryTag(Env), spec, stage)
 }
 
 export async function standardBuild(spec: Spec, build: Options = {}): Promise<void> {

@@ -22,7 +22,7 @@ Deno.test('buildOptions dev', async () => {
 
 	assertEquals(await _buildOptions(devEnv, {}),
 		{
-			cacheFrom: sort([ await Git.branchName(), "latest" ]),
+			cacheFrom: [ "latest", await Git.branchName() ],
 			push: false,
 			tags: [ "development" ],
 		}

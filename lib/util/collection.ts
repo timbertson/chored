@@ -3,8 +3,18 @@ export function sort<T>(items: T[], cmp?: (a: T, b: T) => number): T[] {
 	return items
 }
 
+export function dedupeSort<T>(items: T[], cmp?: (a: T, b: T) => number): T[] {
+	return sort(dedupe(items))
+}
+
 export function dedupe<T>(items: T[]): T[] {
-	return sort(Array.from(new Set(items)))
+	const rv: T[] = []
+	for (const t of items) {
+		if (rv.indexOf(t) === -1) {
+			rv.push(t)
+		}
+	}
+	return rv
 }
 
 export function equalSets<T>(a: Set<T>, b: Set<T>): boolean {

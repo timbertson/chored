@@ -82,11 +82,15 @@ interface ConcreteTags {
 	tags: Image[]
 }
 
-export function _applyTagStrategy(spec: MinimalSpec, strategy: TagStrategy, stage: MinimalStage): ConcreteTags {
+export function _applyTag(tag: string, spec: MinimalSpec, stage: MinimalStage): Image {
 	const suffix = stage.tagSuffix ?? `-${stage.name}`
+	return image(spec.url, tag + suffix).raw
+}
+
+export function _applyTagStrategy(spec: MinimalSpec, strategy: TagStrategy, stage: MinimalStage): ConcreteTags {
 	return {
-		cacheFrom: (strategy.cacheFrom ?? []).map(base => image(spec.url, base + suffix).raw),
-		tags: (strategy.tags ?? []).map(base => image(spec.url, base + suffix).raw),
+		cacheFrom: (strategy.cacheFrom ?? []).map(base => _applyTag(base, spec, stage)),
+		tags: (strategy.tags ?? []).map(base => _applyTag(base, spec, stage)),
 	}
 }
 

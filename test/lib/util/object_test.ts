@@ -56,7 +56,7 @@ Deno.test('deepMerge', () => {
 		assertEquals(deepMergeWith({ arrays: 'union' })(base, override1, override2),
 		{
 			foo: [1, 2, 3, 4, 5],
-			bar: ['five', 'four', 'seven', 'six' ],
+			bar: ['four', 'five', 'six', 'seven' ],
 		})
 	})
 

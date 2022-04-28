@@ -165,10 +165,12 @@ Deno.test('bump import map', async () => {
 	await bumper.bumpImportMap(path)
 	assertEquals(await fs.readTextFile(path), trimIndent(`
 	{
-	  "fs": "nodejs:fs",
-	  "https://raw.githubusercontent.com/foo/bar/HEAD/": "../bar",
-	  "https://raw.githubusercontent.com/timbertson/chored/v1.2.3/": "../chored",
-	  "https://raw.githubusercontent.com/timbertson/chored/v2.0.0/": "../chored"
+	  "imports": {
+	    "fs": "nodejs:fs",
+	    "https://raw.githubusercontent.com/foo/bar/HEAD/": "../bar",
+	    "https://raw.githubusercontent.com/timbertson/chored/v1.2.3/": "../chored",
+	    "https://raw.githubusercontent.com/timbertson/chored/v2.0.0/": "../chored"
+	  }
 	}`))
 })
 
