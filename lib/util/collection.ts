@@ -7,6 +7,15 @@ export function dedupeSort<T>(items: T[], cmp?: (a: T, b: T) => number): T[] {
 	return sort(dedupe(items))
 }
 
+export function partition<T>(items: T[], fn: (t: T) => Boolean): [T[], T[]] {
+	const t: T[] = []
+	const f: T[] = []
+	for (const i of items) {
+		((fn(i)) ? t : f).push(i)
+	}
+	return [t,f]
+}
+
 export function dedupe<T>(items: T[]): T[] {
 	const rv: T[] = []
 	for (const t of items) {

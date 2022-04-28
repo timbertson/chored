@@ -4,7 +4,7 @@ import { trimIndent } from '../../lib/util/string.ts'
 import { DenoFS, FakeFS } from '../../lib/fs/impl.ts'
 import { run } from '../../lib/cmd.ts'
 
-import { Bumper, GithubSource, GithubSpec, ImportSpec, GithubImport, _updater, Source, TestImport } from '../../lib/bump.ts'
+import { Bumper, GithubSource, GithubSpec, ImportSpec, BumpSpec, GithubImport, _updater, Source, TestImport } from '../../lib/bump.ts'
 import withTempDir from "../../lib/fs/with_temp_dir.ts";
 
 const url = (r: string, p?: { spec?: string, repo?: string, path?: string }) => {
@@ -34,6 +34,23 @@ Deno.test('bump parseGH', (t) => {
 	assertEquals(parseGH(base)?.import, expected)
 	assertEquals(parseGH(base + "#ref")?.import, { ... expected, spec: 'ref' })
 	assertEquals(parseGH(url('SHA', { path: '' }))?.import, { ... expected, path: '' })
+})
+
+Deno.test('bump parseGH with override', async (t) => {
+	const base = url('SHA')
+	const parsed = notNull(parseGH(base)?.spec)
+	await t.step('name mismatch', () => {
+		parsed.adaptIfMatch({ sourceName: 'other', spec: 'foo' })
+		assertEquals(parsed.ref, null)
+	})
+	await t.step('short name', () => {
+		parsed.adaptIfMatch({ sourceName: 'chored', spec: 'foo' })
+		assertEquals(parsed.ref, 'foo')
+	})
+	await t.step('full name', () => {
+		parsed.adaptIfMatch({ sourceName: 'timbertson/chored', spec: 'bar' })
+		assertEquals(parsed.ref, 'bar')
+	})
 })
 
 const testSha = '7fa1accd89e45af5c7e60f904d9710c9f4024315'
@@ -75,7 +92,7 @@ Deno.test('GithubSource cache identity only cares about repo and spec', () => {
 
 Deno.test('processImportURLs', async () => {
 	const urls: Array<string> = []
-	const replaced = await (new Bumper()).processImports(`
+	const replaced = await (new Bumper({ sources: [], opts: {}})).processImports(`
 		import { foo } from 'https://example.com/mod.ts#main'
 		export * as Mod from "http://example.com/mod.ts";
 		import {
@@ -107,7 +124,7 @@ Deno.test('processImportURLs', async () => {
 
 Deno.test('bumpFile', async () => {
 	const fs = new FakeFS()
-	const bumper = new Bumper({ fs })
+	const bumper = new Bumper({ sources: [], opts: {}, fs })
 	const replacements: { [index: string]: string } = {
 		'http://a1': 'http://A1',
 		'http://a2': 'http://A2',
@@ -140,8 +157,11 @@ Deno.test('bumpFile', async () => {
 
 Deno.test('bump import map', async () => {
 	const fs = new FakeFS()
-	const bumper = new Bumper({ fs })
-	// bumper.verbose = true
+	const bumper = new Bumper({
+		sources: [ GithubSource ],
+		opts: {
+			// verbose: true
+		}, fs })
 	
 	function addUpdater(importSpec: ImportSpec<GithubImport>) {
 		bumper.cache[importSpec.spec.identity] = Promise.resolve(_updater<GithubImport>(
@@ -190,6 +210,7 @@ Deno.test('bump walk', () => withTempDir({}, async (dir) => {
 				spec: {
 					origin: url,
 					identity: url,
+					adaptIfMatch(spec: BumpSpec) {},
 					resolve(verbose: boolean) {
 						return Promise.resolve(_updater<TestImport>(url, (imp: TestImport) => imp.url + "-new"))
 					}

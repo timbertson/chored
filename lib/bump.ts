@@ -54,6 +54,7 @@ export function _updater<Import extends AnyImport>(origin: string, fn: (imp: Imp
 export interface Spec {
 	origin: string,
 	identity: string,
+	adaptIfMatch(spec: BumpSpec): void
 	resolve(verbose: boolean): Promise<Updater | null>
 }
 
@@ -69,17 +70,21 @@ export interface Source<Import> {
 export class GithubSpec implements Spec {
 	identity: string
 	origin: string
-	repo: string
+	repoName: string
+	repoPath: string
+	repoURL: string
 	ref: string | null
 
 	constructor(imp: {spec: string | null, owner: string, repo: string}) {
 		this.ref = imp.spec
-		this.origin = `github:${imp.owner}/${imp.repo}`
+		this.repoName = imp.repo
+		this.repoPath = `${imp.owner}/${imp.repo}`
+		this.origin = `github:${this.repoPath}`
 		this.identity = GithubSpec.addSpec(imp, this.origin)
 
 		// TODO: use https if there's known creds, otherwise ssh?
 		// TODO: reuse deno's credentials system for transparently accessing private repos
-		this.repo = `git@github.com:${imp.owner}/${imp.repo}.git`
+		this.repoURL = `git@github.com:${imp.owner}/${imp.repo}.git`
 	}
 
 	static show(imp: GithubImport): string {
@@ -94,12 +99,18 @@ export class GithubSpec implements Spec {
 		}
 	}
 
-	async resolve(verbose: boolean): Promise<Updater|null> {
-		return this.resolveFrom(this.repo, verbose)
+	adaptIfMatch(spec: BumpSpec): void {
+		if (spec.sourceName === this.repoName || spec.sourceName === this.repoPath) {
+			this.ref = spec.spec
+		}
 	}
 
-	async resolveFrom(repo: string, verbose: boolean): Promise<Updater|null> {
-		this.repo = repo // only used in testing
+	async resolve(verbose: boolean): Promise<Updater|null> {
+		return this.resolveFrom(this.repoURL, verbose)
+	}
+
+	async resolveFrom(repoURL: string, verbose: boolean): Promise<Updater|null> {
+		this.repoURL = repoURL // only used in testing
 		const version = await this.resolveLatestVersion(verbose)
 		if (version) {
 			if (verbose) {
@@ -140,26 +151,26 @@ export class GithubSpec implements Spec {
 			// grab all refs, because we've got a specific ref
 			cmd.push('--tags', '--heads')
 		}
-		cmd.push(this.repo, refFilter)
+		cmd.push(this.repoURL, refFilter)
 
 		await run(cmd, { stdout: processLine, printCommand: verbose })
 		if (verbose) {
-			console.log(`[refs]: ${refs.length} ${this.repo}`)
+			console.log(`[refs]: ${refs.length} ${this.repoURL}`)
 			for (const ref of refs) {
 				console.log(`[ref]: ${ref.name} ${ref.commit}`)
 			}
 		}
 		if (refs.length == 0) {
-			console.warn(`WARN: No '${refFilter}' refs present in ${this.repo}`)
+			console.warn(`WARN: No '${refFilter}' refs present in ${this.repoURL}`)
 			return null
 		}
 		if (!isWildcard) {
 			const matchingRefs = refs.filter(r => r.name === this.ref)
 			if (matchingRefs.length == 0) {
-				console.warn(`WARN: refs received from ${this.repo}, but none matched '${this.ref}'. Returned refs: ${JSON.stringify(refs)}`)
+				console.warn(`WARN: refs received from ${this.repoPath}, but none matched '${this.ref}'. Returned refs: ${JSON.stringify(refs)}`)
 				return null
 			} else if (matchingRefs.length > 1) {
-				console.warn(`WARN: ${matchingRefs.length} matches for '${this.ref}' in ${this.repo}`)
+				console.warn(`WARN: ${matchingRefs.length} matches for '${this.ref}' in ${this.repoPath}`)
 			}
 			return matchingRefs[0].commit
 		}
@@ -176,7 +187,7 @@ export class GithubSpec implements Spec {
 			})
 		)
 		if (verbose) {
-			console.log(`[parsed versions]: ${versions.length} ${this.repo}`)
+			console.log(`[parsed versions]: ${versions.length} ${this.repoPath}`)
 		}
 		if (versions.length == 0) {
 			console.warn(`WARN: no versions found in refs: ${JSON.stringify(refs.map(r => r.name))}`)
@@ -215,9 +226,15 @@ interface Ref {
 
 type AsyncReplacer = (url: string) => Promise<string>
 
+interface BumperOptions {
+	verbose?: boolean
+	explicitSpecs?: BumpSpec[]
+}
+
 export class Bumper {
 	private static dot = new TextEncoder().encode('.')
-	verbose: boolean = false
+	private verbose: boolean
+	private opts: BumperOptions
 
 	private fs: FS
 	private sources: AnySource[]
@@ -225,15 +242,20 @@ export class Bumper {
 	private changedSources: Set<string> = new Set()
 	private fetchCount: number = 0
 	
-	constructor(opts?: { sources?: Array<AnySource>, fs?: FS }) {
-		this.sources = opts?.sources ?? defaultSources
+	constructor(opts: { sources: Array<AnySource>, opts: BumperOptions, fs?: FS }) {
+		this.sources = opts.sources
+		this.opts = opts.opts
+		this.verbose = this.opts.verbose ?? false
 		this.fs = opts?.fs ?? DenoFS
 	}
 
-	private parse(url: string): AnyImportSpec | null {
+	parse(url: string): AnyImportSpec | null {
 		for (const source of this.sources) {
 			const importSpec = source.parse(url)
 			if (importSpec) {
+				for (const override of (this.opts.explicitSpecs ?? [])) {
+					importSpec.spec.adaptIfMatch(override)
+				}
 				return importSpec
 			}
 		}
@@ -314,7 +336,7 @@ export class Bumper {
 		const importSpec = this.parse(url)
 		if (!importSpec) {
 			if (this.verbose) {
-				console.log("Invalid URL: ", url)
+				console.log("Unknown URL: ", url)
 			}
 			return []
 		}
@@ -360,11 +382,10 @@ export class Bumper {
 		})
 	}
 
-	static async _bump(roots: Array<string>, overrides: WalkOptions = {}, sources?: AnySource[]): Promise<number> {
+	static async _bump(roots: Array<string>, overrides: BumpOptions = {}, sources?: AnySource[]): Promise<number> {
 		const opts = merge(defaultOptions, overrides)
 		const work: Array<Promise<boolean>> = []
-		const bumper = new Bumper({ sources })
-		bumper.verbose = opts.verbose ?? false
+		const bumper = new Bumper({ sources: sources ?? defaultSources, opts })
 
 		let exts = opts.exts ?? []
 		const importMapExt = opts.importMapExt
@@ -385,8 +406,11 @@ export class Bumper {
 			}
 		}
 
+		if (roots.length == 0) {
+			roots = ['.']
+		}
 		const walkOpts = { ... opts, exts, followSymlinks: false, includeDirs: false }
-		if (opts.verbose === true) console.log(`[opts] ${JSON.stringify(walkOpts)}`)
+		if (opts.verbose === true) console.log(`[opts] ${JSON.stringify(walkOpts)} ${JSON.stringify(roots)}`)
 		for (const root of roots) {
 			const rootStat = await Deno.stat(root)
 			if (rootStat.isDirectory) {
@@ -410,19 +434,33 @@ export class Bumper {
 	}
 }
 
-export async function bump(roots: Array<string>, overrides: WalkOptions = {}): Promise<void> {
+export async function bump(roots: Array<string>, overrides: BumpOptions = {}): Promise<void> {
 	await Bumper._bump(roots, overrides)
 }
 
-export interface WalkOptions {
+// used to explicitly specify a target for a given remote
+export interface BumpSpec {
+	sourceName: string,
+	spec: string,
+}
+
+export function parseSpec(s: string): BumpSpec {
+	const parts = s.split('#')
+	if (parts.length === 2) {
+		const [sourceName, spec] = parts
+		return { sourceName, spec }
+	}
+	throw new Error(`Can't parse spec: ${s}`)
+}
+
+export interface BumpOptions extends BumperOptions {
 	exts?: string[]
 	importMapExt?: string | null
 	match?: RegExp[]
 	skip?: RegExp[]
-	verbose?: boolean
 }
 
-export const defaultOptions : WalkOptions = {
+export const defaultOptions : BumpOptions = {
 	exts: ['.ts'],
 	importMapExt: 'map.json',
 	skip: [/^\..+/],
