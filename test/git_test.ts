@@ -1,8 +1,8 @@
-import { assertEquals, assertRejects, assertMatch } from '../common.ts'
-import * as git from '../../lib/git.ts'
-import { notNull } from '../../lib/util/object.ts'
+import { assertEquals, assertRejects, assertMatch } from './common.ts'
+import * as git from '../lib/git.ts'
+import { notNull } from '../lib/util/object.ts'
 import { Context } from './git_ctx.ts'
-import { run, runOutput } from "../../lib/cmd.ts";
+import { run, runOutput } from "../lib/cmd.ts";
 
 Deno.test('git unclean detection', () => Context.run(async (ctx: Context) => {
 	assertEquals(await git.uncommittedChanges(ctx.gitOpts), null)

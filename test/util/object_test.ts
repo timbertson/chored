@@ -1,7 +1,7 @@
-import withTempFile from "../../../lib/fs/with_temp_file.ts";
-import { deepMerge, deepMergeWith } from "../../../lib/util/object.ts";
-import { replaceSuffix, trimIndent } from "../../../lib/util/string.ts";
-import { assertEquals } from '../../common.ts'
+import withTempFile from "../../lib/fs/with_temp_file.ts";
+import { deepMerge, deepMergeWith } from "../../lib/util/object.ts";
+import { replaceSuffix, trimIndent } from "../../lib/util/string.ts";
+import { assertEquals } from '../common.ts'
 
 interface Attributes {
 	foo: string,
@@ -77,7 +77,7 @@ Deno.test('deepMerge', () => {
 	})
 	
 	async function doesNotCompile(code: string, expected: string): Promise<void> {
-		const objectURL = replaceSuffix(import.meta.url, 'object_test.ts', "../../../lib/util/object.ts")
+		const objectURL = replaceSuffix(import.meta.url, 'object_test.ts', "../../lib/util/object.ts")
 		await withTempFile({ suffix: '.ts' }, async (p) => {
 			const fullCode = `import { deepMerge } from '${objectURL}'\n${trimIndent(code)}`
 			await Deno.writeTextFile(p, fullCode)

@@ -1,11 +1,10 @@
-import { runOutput } from "../../lib/cmd.ts";
-import { assertEquals, assertNotEquals, assertRejects, assertMatch, fail } from "../common.ts";
+import { runOutput } from "../lib/cmd.ts";
+import { assertEquals, assertNotEquals, assertRejects, assertMatch, fail } from "./common.ts";
 import { Context } from './git_ctx.ts'
 
-import { selfUpdate, _makePullRequestHandler, _makePushHandler, PullRequestOptions } from '../../lib/self_update.ts'
-import * as Git from '../../lib/git.ts'
-import * as GH from '../../lib/github/api.ts'
-import * as Graphql from '../../lib/graphql.ts'
+import { selfUpdate, _makePullRequestHandler, _makePushHandler, PullRequestOptions } from '../lib/self_update.ts'
+import * as Git from '../lib/git.ts'
+import * as GH from '../lib/github/api.ts'
 
 const commitMessage = 'test commit'
 function getLastCommitMessage(dir: string) {

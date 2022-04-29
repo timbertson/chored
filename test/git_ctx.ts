@@ -1,6 +1,6 @@
-import { run, RunOpts } from '../../lib/cmd.ts'
-import * as git from '../../lib/git.ts'
-import withTempDir from '../../lib/fs/with_temp_dir.ts'
+import { run, RunOpts } from '../lib/cmd.ts'
+import * as git from '../lib/git.ts'
+import withTempDir from '../lib/fs/with_temp_dir.ts'
 
 export class Context {
 	dir: string

@@ -1,6 +1,6 @@
-import { _applyTagStrategy, _buildCommand } from "../../../lib/docker/build.ts";
-import { MinimalSpec } from "../../../lib/docker/file.ts";
-import { assertEquals } from "../../common.ts";
+import { _applyTagStrategy, _buildCommand } from "../../lib/docker/build.ts";
+import { MinimalSpec } from "../../lib/docker/file.ts";
+import { assertEquals } from "../common.ts";
 
 const spec: MinimalSpec = {
 	url: 'localhost/app',

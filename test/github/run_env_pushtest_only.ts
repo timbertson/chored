@@ -1,7 +1,7 @@
-import { assertEquals } from '../../common.ts'
+import { assertEquals } from '../common.ts'
 import parseRef from './parse_ref.ts'
 
-import * as Env from '../../../lib/github/run_env.ts'
+import * as Env from '../../lib/github/run_env.ts'
 
 // This is a bit silly: we can only see what GH provides within the appropriate event,
 // so these tests can't run in any other context :/

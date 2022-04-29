@@ -1,5 +1,5 @@
-import { assertEquals, assertRejects } from '../common.ts'
-import { run, runTest, runOutput } from '../../lib/cmd.ts'
+import { assertEquals, assertRejects } from './common.ts'
+import { run, runTest, runOutput } from '../lib/cmd.ts'
 
 const noPrint = { printCommand: false }
 

@@ -1,7 +1,7 @@
-import { assertEquals } from '../../common.ts'
+import { assertEquals } from '../common.ts'
 import parseRef from './parse_ref.ts'
 
-import * as Env from '../../../lib/github/run_env.ts'
+import * as Env from '../../lib/github/run_env.ts'
 
 Deno.test('run_env PR context', async () => {
 	// GH pulls always run on a merge commit, pull it out from git to cross-check.

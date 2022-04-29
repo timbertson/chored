@@ -1,5 +1,5 @@
-import { equalSets } from "../../../lib/util/collection.ts";
-import { assertEquals } from "../../common.ts";
+import { equalSets } from "../../lib/util/collection.ts";
+import { assertEquals } from "../common.ts";
 
 Deno.test('equalSets', () => {
 	assertEquals(equalSets(new Set([1,2,3]), new Set([1,2,3])), true)

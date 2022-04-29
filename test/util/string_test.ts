@@ -1,5 +1,5 @@
-import { trimIndent } from "../../../lib/util/string.ts";
-import { assertEquals } from "../../common.ts";
+import { trimIndent } from "../../lib/util/string.ts";
+import { assertEquals } from "../common.ts";
 
 Deno.test('trimIndent', () => {
 	assertEquals(trimIndent(`

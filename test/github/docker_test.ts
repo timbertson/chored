@@ -1,8 +1,7 @@
-import { assertEquals } from "../../common.ts";
+import { assertEquals } from "../common.ts";
 
-import { _buildOptions, GithubEnv } from "../../../lib/github/docker.ts";
-import * as Git from "../../../lib/git.ts"
-import { sort } from "../../../lib/util/collection.ts";
+import { _buildOptions, GithubEnv } from "../../lib/github/docker.ts";
+import * as Git from "../../lib/git.ts"
 
 const sha = 'abcd123'
 

@@ -1,5 +1,5 @@
-import { assertEquals } from '../common.ts'
-import { Version } from '../../lib/version.ts'
+import { assertEquals } from './common.ts'
+import { Version } from '../lib/version.ts'
 
 const nums = (...numbers: number[]) => new Version('', numbers, '')
 

@@ -1,6 +1,6 @@
-import { runOutput, run } from '../../../lib/cmd.ts'
+import { runOutput, run } from '../../lib/cmd.ts'
 
-import * as Env from '../../../lib/github/run_env.ts'
+import * as Env from '../../lib/github/run_env.ts'
 
 let fetched = false
 

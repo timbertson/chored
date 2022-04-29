@@ -1,10 +1,9 @@
-import { assertEquals, assertMatch } from './common.ts'
-import { DenoFS } from '../lib/fs/impl.ts'
-import { run } from '../lib/cmd.ts'
-import withTempDir from '../lib/fs/with_temp_dir.ts'
-import * as Main from '../lib/main.ts'
-import * as Entrypoint from '../lib/main/entrypoint.ts'
-import { Config, defaultConfig } from '../lib/main/config.ts'
+import { assertEquals, assertMatch } from '../common.ts'
+import { DenoFS } from '../../lib/fs/impl.ts'
+import { run } from '../../lib/cmd.ts'
+import withTempDir from '../../lib/fs/with_temp_dir.ts'
+import * as Entrypoint from '../../lib/main/entrypoint.ts'
+import { Config, defaultConfig } from '../../lib/main/config.ts'
 
 Deno.test("bootstrap", async () => {
 	const here = Deno.cwd()
@@ -71,8 +70,8 @@ Deno.test("run", () => withTempDir({}, async (dir) => {
 	const moduleURI = (name: string) => `file://${dir}/${name}.ts`
 	const config: Config = { ...defaultConfig, taskRoot: dir }
 
-	assertEquals(await Main.run(config, ['a'], {}), 'chore a!')
-	assertEquals(await Main.run(config, ['a', 'async'], {}), 'chore a (async)!')
+	assertEquals(await Entrypoint.run(config, ['a'], {}), 'chore a!')
+	assertEquals(await Entrypoint.run(config, ['a', 'async'], {}), 'chore a (async)!')
 
 	assertEquals(await resolveEntrypoint(config, ['./choredefs/render.ts']), {
 		module: `file://${Deno.cwd()}/./choredefs/render.ts`, fn: 'default', viaDefault: false
@@ -81,10 +80,10 @@ Deno.test("run", () => withTempDir({}, async (dir) => {
 	assertEquals(await resolveEntrypoint(config, ['b']), {
 		module: moduleURI('index'), fn: 'b', viaDefault: false
 	})
-	assertEquals(await Main.run(config, ['b'], {}), 'index b!')
-	assertEquals(await Main.run(config, [], {}), 'main!')
+	assertEquals(await Entrypoint.run(config, ['b'], {}), 'index b!')
+	assertEquals(await Entrypoint.run(config, [], {}), 'main!')
 
-	assertEquals(await Main.run(config, ['dynamic', 'impl'], {}), 'dynamic!')
+	assertEquals(await Entrypoint.run(config, ['dynamic', 'impl'], {}), 'dynamic!')
 
 	// not present in index, fallback
 	const notFoundError = await resolveEntrypoint(config, ['c']) as Entrypoint.NoSuchEntrypoint

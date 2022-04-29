@@ -1,6 +1,6 @@
-import { assertEquals } from '../../common.ts'
+import { assertEquals } from '../common.ts'
 
-import * as Step from '../../../lib/github/step.ts'
+import * as Step from '../../lib/github/step.ts'
 
 const defaultCheckout = {
 	name: 'Checkout',

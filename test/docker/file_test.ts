@@ -1,5 +1,5 @@
-import * as D from '../../../lib/docker/file.ts'
-import { assertEquals } from "../../common.ts";
+import * as D from '../../lib/docker/file.ts'
+import { assertEquals } from "../common.ts";
 
 const ubuntu = D.image('ubuntu')
 

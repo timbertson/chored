@@ -1,11 +1,11 @@
-import { assertEquals } from '../common.ts'
-import { notNull } from '../../lib/util/object.ts'
-import { trimIndent } from '../../lib/util/string.ts'
-import { DenoFS, FakeFS } from '../../lib/fs/impl.ts'
-import { run } from '../../lib/cmd.ts'
+import { assertEquals } from './common.ts'
+import { notNull } from '../lib/util/object.ts'
+import { trimIndent } from '../lib/util/string.ts'
+import { DenoFS, FakeFS } from '../lib/fs/impl.ts'
+import { run } from '../lib/cmd.ts'
 
-import { Bumper, GithubSource, GithubSpec, ImportSpec, BumpSpec, GithubImport, _updater, Source, TestImport } from '../../lib/bump.ts'
-import withTempDir from "../../lib/fs/with_temp_dir.ts";
+import { Bumper, GithubSource, GithubSpec, ImportSpec, BumpSpec, GithubImport, _updater, Source, TestImport } from '../lib/bump.ts'
+import withTempDir from "../lib/fs/with_temp_dir.ts";
 
 const url = (r: string, p?: { spec?: string, repo?: string, path?: string }) => {
 	const base = `https://raw.githubusercontent.com/${p?.repo ?? 'timbertson/chored'}/${r}/${p?.path ?? 'lib/README.md'}`
