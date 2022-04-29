@@ -30,6 +30,15 @@ export interface NoSuchEntrypoint {
 	candidates: string[],
 }
 
+export async function run(config: Config, main: Array<string>, opts: RunOpts): Promise<void> {
+	let entrypoint = await resolveEntrypoint(config, main)
+	if (isEntrypointFound(entrypoint)) {
+		return runResolved(entrypoint, opts)
+	} else {
+		throw new Error(`Chore ${JSON.stringify(main)} not found. Searched:\n - ${entrypoint.candidates.join('\n - ')}`)
+	}
+}
+
 export function isEntrypointFound(candidate: Entrypoint | NoSuchEntrypoint): candidate is Entrypoint {
 	return (candidate as Entrypoint).module !== undefined
 }

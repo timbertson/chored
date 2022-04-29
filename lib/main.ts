@@ -1,16 +1,7 @@
 import { notNull } from './util/object.ts'
 import { Config, defaultConfig } from './main/config.ts'
 
-import { resolveEntrypoint, isEntrypointFound, runResolved, Code, RunOpts } from './main/entrypoint.ts'
-
-export async function run(config: Config, main: Array<string>, opts: RunOpts): Promise<any> {
-	let entrypoint = await resolveEntrypoint(config, main)
-	if (isEntrypointFound(entrypoint)) {
-		return runResolved(entrypoint, opts)
-	} else {
-		throw new Error(`Chore ${JSON.stringify(main)} not found. Searched:\n - ${entrypoint.candidates.join('\n - ')}`)
-	}
-}
+import { run, Code } from './main/entrypoint.ts'
 
 const bools: { [index: string]: boolean } = { true: true, false: false }
 
