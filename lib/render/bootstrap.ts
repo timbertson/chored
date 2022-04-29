@@ -1,15 +1,10 @@
 import { ExecutableFile } from "./file.ts";
-
-const thisModule = import.meta.url
-const suffixLocation = thisModule.lastIndexOf('/lib/')
-if (suffixLocation < 0) {
-	throw new Error("invalid self url")
-}
+import { replaceSuffix } from "../util/string.ts"
 
 export interface Options {
 	mainModule?: string,
 }
-export const mainModule = thisModule.substring(0, suffixLocation) + "/main.ts"
+export const mainModule = replaceSuffix(import.meta.url, 'render/bootstrap.ts', 'main.ts')
 export const denoVersion = '1.18.0'
 
 function makeScript(body: string) {

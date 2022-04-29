@@ -1,10 +1,10 @@
-import { assertEquals, assertThrows, assertRejects, assertMatch } from './common.ts'
-import { DenoFS, FakeFS } from '../lib/fs/impl.ts'
+import { assertEquals, assertMatch } from './common.ts'
+import { DenoFS } from '../lib/fs/impl.ts'
 import { run } from '../lib/cmd.ts'
 import withTempDir from '../lib/fs/with_temp_dir.ts'
-import * as Main from '../main.ts'
-import { Config, defaultConfig } from '../lib/chored_config.ts'
-import { replaceSuffix } from '../lib/util/string.ts'
+import * as Main from '../lib/main.ts'
+import * as Entrypoint from '../lib/main/entrypoint.ts'
+import { Config, defaultConfig } from '../lib/main/config.ts'
 
 Deno.test("bootstrap", async () => {
 	const here = Deno.cwd()
@@ -38,9 +38,9 @@ interface MinimalEntrypoint {
 	viaDefault: boolean,
 }
 
-async function resolveEntrypoint(c: Config, main: string[]): Promise<MinimalEntrypoint|Main.NoSuchEntrypoint> {
-	const r = await Main.resolveEntrypoint(c, main)
-	if (Main.isEntrypointFound(r)) {
+async function resolveEntrypoint(c: Config, main: string[]): Promise<MinimalEntrypoint|Entrypoint.NoSuchEntrypoint> {
+	const r = await Entrypoint.resolveEntrypoint(c, main)
+	if (Entrypoint.isEntrypointFound(r)) {
 		return {
 			module: r.module,
 			fn: r.fn,
@@ -87,7 +87,7 @@ Deno.test("run", () => withTempDir({}, async (dir) => {
 	assertEquals(await Main.run(config, ['dynamic', 'impl'], {}), 'dynamic!')
 
 	// not present in index, fallback
-	const notFoundError = await resolveEntrypoint(config, ['c']) as Main.NoSuchEntrypoint
+	const notFoundError = await resolveEntrypoint(config, ['c']) as Entrypoint.NoSuchEntrypoint
 	assertMatch(notFoundError.candidates.join('\n'), /index.ts symbol 'c', found \["b","default"\]/)
 	assertMatch(notFoundError.candidates.join('\n'), /lib\/chore\/builtins.ts symbol 'c'/)
 }))

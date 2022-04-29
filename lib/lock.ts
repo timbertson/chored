@@ -1,4 +1,4 @@
-import { Config, defaultConfig } from './chored_config.ts'
+import { Config, defaultConfig } from './main/config.ts'
 import { run } from './cmd.ts'
 import withTempFile from './fs/with_temp_file.ts'
 import { replaceSuffix } from './util/string.ts'
