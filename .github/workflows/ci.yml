@@ -14,26 +14,25 @@ jobs:
         uses: actions/checkout@v3
       - name: Setup chored
         uses: timbertson/chored-setup@v1
-      - name: ci
-        run: ./chored ci --json "$OPTS"
+      - run: ./chored ci --json "$OPTS"
         env:
           OPTS: '{"requireClean":true}'
-      - name: PR specific tests
-        run: ./chored test --json "$OPTS"
+      - run: ./chored test --json "$OPTS"
+        name: PR specific tests
         env:
           OPTS: '{"args":["integration/github/pull_request_event"]}'
         if: github.event_name == 'pull_request'
-      - name: Push specific tests
-        run: ./chored test --json "$OPTS"
+      - run: ./chored test --json "$OPTS"
+        name: Push specific tests
         env:
           OPTS: '{"args":["integration/github/push_event"]}'
         if: github.event_name == 'push'
-      - name: Integration tests (Github API)
-        run: ./chored test --json "$OPTS"
+      - run: ./chored test --json "$OPTS"
+        name: Integration tests (Github API)
         env:
           OPTS: '{"args":["integration/github/authenticated"]}'
           GITHUB_TOKEN: '${{ secrets.github_token }}'
-      - name: Integration tests (Bootstrap)
-        run: ./chored test --json "$OPTS"
+      - run: ./chored test --json "$OPTS"
+        name: Integration tests (Bootstrap)
         env:
           OPTS: '{"args":["integration/bootstrap"]}'

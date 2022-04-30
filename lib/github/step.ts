@@ -83,8 +83,11 @@ export function chore(opts: ChoreStep): Step {
 	const argStr = args.length === 0 ? '' : (' ' + args.join(' '))
 
 	const ret: Step = {
-		name: opts.stepName ?? opts.name,
 		run: `./chored ${main.join(' ')}${argStr}`,
+	}
+
+	if (opts.stepName) {
+		ret.name = opts.stepName
 	}
 
 	if (env != null) {

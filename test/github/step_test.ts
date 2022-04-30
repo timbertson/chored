@@ -30,7 +30,6 @@ Deno.test('chore', () => {
 	assertEquals(
 		Step.chore({ name: 'foo' }),
 		{
-			name: "foo",
 			run: "./chored foo",
 		})
 
