@@ -51,7 +51,7 @@ export async function build(opts: BuildInvocation = { stage: null }) {
 		stdin = opts.dockerfile
 	}
 	try {
-		await run(cmd, { stdin })
+		await run(cmd, { stdin, env: { DOCKER_BUILDKIT: '1' } })
 	} catch(e) {
 		if (stdin) {
 			console.warn("Dockerfile build failed on literal:\n----\n"+stdin.contents+"\n----\n")
