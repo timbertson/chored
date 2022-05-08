@@ -1,3 +1,4 @@
+import { gray, red } from './fmt/colors.ts'
 import { notNull } from './util/object.ts'
 import { Config, defaultConfig } from './main/config.ts'
 
@@ -63,7 +64,20 @@ export async function main(config: Config, args: Array<string>): Promise<void> {
 	if (action === 'list') {
 		await resolver.listEntrypoints(main)
 	} else {
-		await resolver.run(main, opts)
+		try {
+			await resolver.run(main, opts)
+		} catch (e) {
+			const dump = (e instanceof Error ? e.stack : null) ?? String(e)
+			const msgPos = dump.indexOf(e.message)
+			if (msgPos > -1) {
+				const splitIdx = msgPos + e.message.length
+				Deno.stderr.writeSync(new TextEncoder().encode(red(dump.substring(0, splitIdx))))
+				console.error(gray(dump.substring(splitIdx)))
+			} else {
+				console.error(dump)
+			}
+			Deno.exit(1)
+		}
 	}
 }
 
