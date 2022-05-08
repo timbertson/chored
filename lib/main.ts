@@ -1,11 +1,11 @@
 import { notNull } from './util/object.ts'
 import { Config, defaultConfig } from './main/config.ts'
 
-import { run, Code } from './main/entrypoint.ts'
+import { Resolver, Code } from './main/entrypoint.ts'
 
 const bools: { [index: string]: boolean } = { true: true, false: false }
 
-export async function main(config: Config, args: Array<string>) {
+export async function main(config: Config, args: Array<string>): Promise<void> {
 	let shift = () => {
 		let ret = args.shift()
 		if (ret == null) {
@@ -16,6 +16,7 @@ export async function main(config: Config, args: Array<string>) {
 	
 	let main = []
 	let opts: { [index: string]: Code } = {}
+	let action: 'run' | 'list' = 'run'
 	while(true) {
 		// TODO: more terse arg parsing:
 		// `--foo bar` and `--foo=bar` short for `-s foo bar`
@@ -45,6 +46,8 @@ export async function main(config: Config, args: Array<string>) {
 			let key = shift()
 			let envKey = shift()
 			opts[key] = Code.env(envKey)
+		} else if (arg == '--list' || arg == '-l') {
+			action = 'list'
 		} else if (arg === '--' || arg === '-') {
 			// pass remaining args
 			opts['args'] = Code.value(args)
@@ -56,7 +59,12 @@ export async function main(config: Config, args: Array<string>) {
 		}
 	}
 	
-	run(config, main, opts)
+	const resolver = new Resolver(config)
+	if (action === 'list') {
+		await resolver.listEntrypoints(main)
+	} else {
+		await resolver.run(main, opts)
+	}
 }
 
 if (import.meta.main) {

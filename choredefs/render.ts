@@ -12,6 +12,6 @@ export default async function(_: {}): Promise<void> {
 		Dockerfile,
 	], {
 		// for this repo, we pin main to the local version instead of the public version
-		wrapperScript: wrapperScript({ mainModule: './main.ts' })
+		wrapperScript: wrapperScript({ mainModule: './lib/main.ts' })
 	})
 }

@@ -1,7 +1,6 @@
-import { FS, DenoFS } from '../fs/impl.ts'
 import withTempFile from '../fs/with_temp_file.ts'
 import { notNull } from '../util/object.ts'
-import { dedupe } from '../util/collection.ts'
+import { partition, equalArrays, sort } from '../util/collection.ts'
 import { Config } from './config.ts'
 import { replaceSuffix } from '../util/string.ts'
 
@@ -19,104 +18,40 @@ export const Code = {
 	}
 }
 
+type Id = [string] | [string, string]
+
 export interface Entrypoint {
 	module: string,
+	id: Id,
 	fn: string,
 	impl: Function,
 	viaDefault: boolean,
 }
 
-export interface NoSuchEntrypoint {
-	candidates: string[],
-}
-
-export async function run(config: Config, main: Array<string>, opts: RunOpts): Promise<void> {
-	let entrypoint = await resolveEntrypoint(config, main)
-	if (isEntrypointFound(entrypoint)) {
-		return runResolved(entrypoint, opts)
-	} else {
-		throw new Error(`Chore ${JSON.stringify(main)} not found. Searched:\n - ${entrypoint.candidates.join('\n - ')}`)
-	}
-}
-
-export function isEntrypointFound(candidate: Entrypoint | NoSuchEntrypoint): candidate is Entrypoint {
-	return (candidate as Entrypoint).module !== undefined
+interface EntrypointSource {
+	scope: string | null, // used to skip loading entrypoints that can't match
+	entrypoints(): Promise<Entrypoint[]>
 }
 
 const builtinChores = () => replaceSuffix(import.meta.url, 'main/entrypoint.ts', 'chore/builtins.ts')
 
-async function resolveEntrypointSymbol(module: string, fn: string, chainError?: NoSuchEntrypoint): Promise<Entrypoint | NoSuchEntrypoint> {
-	const api = await import(module)
-	const isFunctionOn = (base: any) => (symbol: string) => typeof(base[symbol]) === 'function'
-	let impl: Function | undefined = api[fn]
-	let viaDefault = false
-	if (typeof(impl) === 'function') {
-		return { module, fn, impl, viaDefault }
-	} else if (Object.hasOwn(api, 'default')) {
-		impl = api.default[fn]
-		viaDefault = true
-		if (typeof(impl) === 'function') {
-			return { module, fn, impl, viaDefault }
-		}
-	}
-
-	let allExports = Object.keys(api).filter(isFunctionOn(api))
-	if (viaDefault) {
-		allExports = allExports.concat(
-			Object.keys(api.default).filter(isFunctionOn(api.default))
-		)
-	}
-	
-	const thisError = [ `${module} symbol '${fn}', found ${JSON.stringify(dedupe(allExports))}` ]
-	const allCandidates = chainError ? chainError.candidates.concat(thisError) : thisError
-	return { candidates: allCandidates }
+function isFunction(fn: any): fn is Function {
+	return typeof(fn) === 'function'
 }
 
-export async function resolveEntrypoint(config: Config, main: Array<string>, fsOverride?: FS): Promise<Entrypoint | NoSuchEntrypoint> {
-	const fs = fsOverride || DenoFS
-	const absolute = (f: string) => f.startsWith('/') ? f : `${Deno.cwd()}/${f}`
-	const hasSlash = (f: string) => f.indexOf("/") !== -1
-	const fsPath = (f: string) => hasSlash(f) ? absolute(f) : `${config.taskRoot}/${f}.ts`
-	const isURI = (f: string) => f.lastIndexOf("://") !== -1
-	const isModule = async (f: string) => hasSlash(f) || await fs.exists(fsPath(f))
-	const toURI = (f: string) => isURI(f) ? f : `file://${fsPath(f)}`
-	
-	if (main.length == 0) {
-		main = ['default']
+async function entrypointsFromModule(scope: string|null, module: string): Promise<Entrypoint[]> {
+	const api = await import(module)
+
+	const makeId: (_: string) => Id = scope === null ? x => [x] : x => [scope, x]
+	function tasksOn(base: any, viaDefault: boolean): Entrypoint[] {
+		return sort(Object.keys(base)).flatMap((key) => {
+			// TODO check for number of arguments?
+			const impl = base[key]
+			return isFunction(impl) ? [{ id: makeId(key), module, fn: key, impl, viaDefault }] : []
+		})
 	}
-	
-	if (main.length == 2) {
-		// definitely module + function
-		let [module, fn] = main
-		if (main[0] === '--builtin') {
-			module = builtinChores()
-		}
-		return await resolveEntrypointSymbol(toURI(module), fn)
-	} else if (main.length == 1) {
-		const entry = main[0]
-		
-		// it's a filename:
-		if (await isModule(entry)) {
-			return await resolveEntrypointSymbol(toURI(entry), 'default')
-		} else {
-			// first, try index:
-			let chainError: NoSuchEntrypoint | undefined
-			if (await isModule('index')) {
-				const fromIndex: Entrypoint | NoSuchEntrypoint = await resolveEntrypointSymbol(toURI('index'), entry)
-				if (isEntrypointFound(fromIndex)) {
-					return fromIndex
-				} else {
-					chainError = fromIndex
-				}
-			}
-			
-			// if no luck, try builtin chores
-			let builtins: string = builtinChores()
-			return await resolveEntrypointSymbol(builtins, entry, chainError)
-		}
-	} else {
-		throw new Error(`invalid main: ${JSON.stringify(main)}`)
-	}
+
+	return tasksOn(api, false).concat(tasksOn(api.default ?? {}, true))
 }
 
 export interface RunOpts {
@@ -143,4 +78,128 @@ export async function runResolved(entrypoint: Entrypoint, opts: RunOpts): Promis
 	})
 	const result = compiled.default()
 	return isPromise(result) ? await result : result
+}
+
+function makeScopeMatcher(scope: string|null): (_: string) => boolean {
+	return scope === null ? _ => true : name => name === scope
+}
+
+async function listFilesIn(path: string): Promise<string[]> {
+	const rv: string[] = []
+	for await (const entry of Deno.readDir(path)) {
+		if (entry.isFile) {
+			rv.push(entry.name)
+		}
+	}
+	return rv
+}
+
+export class Resolver {
+	config: Config
+
+	constructor(config: Config) {
+		this.config = config
+	}
+
+	async run(main: Array<string>, opts: RunOpts): Promise<void> {
+		let entrypoint = await this.resolveEntrypoint(main)
+		if (entrypoint !== null) {
+			return runResolved(entrypoint, opts)
+		} else {
+			throw new Error(`Chore ${JSON.stringify(main)} not found. Try ./chored --list`)
+		}
+	}
+
+// return known entrypoint source within scopes, in priority order.
+	async *entrypointSources(restrictScope: string | null): AsyncIterable<EntrypointSource> {
+		if (restrictScope !== null && restrictScope.indexOf('/') !== -1) {
+			// assume file or URL and load directly
+			const url = restrictScope.indexOf('://') === -1 ? `file://${Deno.cwd()}/${restrictScope}` : restrictScope
+			yield { scope: restrictScope, entrypoints: () => entrypointsFromModule(restrictScope, url) }
+		} else {
+			const files = (await listFilesIn(this.config.taskRoot)).filter(f => f.endsWith('.ts'))
+
+			const [ indexFiles, taskFiles ] = partition(files, f => f === 'index.ts')
+			taskFiles.sort()
+			const taskOfFilename = (f: string) => replaceSuffix(f, '.ts', '')
+
+			const restrictFilename = restrictScope === null ? null : `${restrictScope}.ts`
+			for (const filename of taskFiles) {
+				if (restrictFilename !== null && filename !== restrictFilename) {
+					continue
+				}
+				const fileScope = taskOfFilename(filename)
+				yield {
+					scope: fileScope,
+					entrypoints: () => entrypointsFromModule(fileScope, `file://${this.config.taskRoot}/${filename}`)
+				}
+			}
+
+			for (const filename of indexFiles) {
+				yield {
+					scope: null,
+					entrypoints: () => entrypointsFromModule(null, `file://${this.config.taskRoot}/${filename}`)
+				}
+			}
+			
+			yield {
+				scope: null,
+				entrypoints: () => entrypointsFromModule(null, builtinChores())
+			}
+		}
+	}
+
+	async resolveEntrypoint(main: Array<string>): Promise<Entrypoint | null> {
+		const restrictScope = main[0] ?? null
+		const mainWithDefault = main.concat(['default'])
+
+		for await (const source of this.entrypointSources(restrictScope)) {
+			if (source.scope === null && main.length > 1) {
+				// unscoped (index) modules only have 1 component, and we need 2
+				continue
+			}
+			const isMain = (e: Entrypoint) =>
+				equalArrays(e.id, e.id.length === main.length ? main : mainWithDefault)
+			const entry = (await source.entrypoints()).find(isMain)
+			if (entry != null) {
+				return entry
+			}
+		}
+		return null
+	}
+
+	async listEntrypoints(main: Array<string>) {
+		const scope = main[0] ?? null
+		const matchesScope = makeScopeMatcher(scope)
+		const seen = new Set<string>()
+		const log: Array<string | string[]> = ['']
+		for await (const source of this.entrypointSources(scope)) {
+			let entrypoints = await source.entrypoints()
+			if (source.scope === null) {
+				entrypoints = entrypoints.filter(e => matchesScope(e.fn) && !seen.has(e.fn))
+				if (entrypoints.length > 0) {
+					log.push(`\n[ from ${entrypoints[0].module} ]:`)
+				}
+			} else {
+				if (!matchesScope(source.scope)) {
+					continue
+				}
+				seen.add(source.scope)
+			}
+
+			for (const entrypoint of entrypoints) {
+				if (source.scope === null) {
+					if (seen.has(entrypoint.fn)) {
+						continue
+					} else {
+						seen.add(entrypoint.fn)
+					}
+				}
+				// only list `default` targets at the toplevel
+				const name = (entrypoint.fn === 'default') ? entrypoint.id[0] : entrypoint.id.join(' ')
+				log.push(` - ${name}`)
+			}
+		}
+		console.log(log.join('\n'))
+	}
 }
