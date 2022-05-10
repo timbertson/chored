@@ -6,7 +6,25 @@ import { Resolver, Code } from './main/entrypoint.ts'
 
 const bools: { [index: string]: boolean } = { true: true, false: false }
 
-export async function main(config: Config, args: Array<string>): Promise<void> {
+interface Options {
+	action: 'run' | 'list'
+	main: string[]
+	opts: { [index: string]: Code }
+}
+
+function guessType(s: string): Code {
+	if (s === 'true') {
+		return Code.value(true)
+	} else if (s === 'false') {
+		return Code.value(false)
+	} else if (s.match(/^-?\d+$/)) {
+		return Code.value(parseInt(s, 10))
+	} else {
+		return Code.value(s)
+	}
+}
+
+export function parseArgs(args: Array<string>): Options {
 	let shift = () => {
 		let ret = args.shift()
 		if (ret == null) {
@@ -19,11 +37,6 @@ export async function main(config: Config, args: Array<string>): Promise<void> {
 	let opts: { [index: string]: Code } = {}
 	let action: 'run' | 'list' = 'run'
 	while(true) {
-		// TODO: more terse arg parsing:
-		// `--foo bar` and `--foo=bar` short for `-s foo bar`
-		// `--foo` short for `-b foo true' (when the next arg starts with `-` or there is none)
-		// `--no-foo` short for `-b foo false'
-
 		let arg = args.shift()
 		if (arg == null) {
 			break
@@ -53,13 +66,36 @@ export async function main(config: Config, args: Array<string>): Promise<void> {
 			// pass remaining args
 			opts['args'] = Code.value(args)
 			break
+		} else if (arg.startsWith('--')) {
+			let argBody = arg.substring(2)
+			// try terse parsing
+			if (argBody.indexOf('=') !== -1) {
+				const [key, value] = argBody.split('=', 2)
+				opts[key] = guessType(value)
+			} else {
+				const nextArg = args[0]
+				if (nextArg != null && !nextArg.startsWith('-')) {
+					// next argument looks like a value, either no leading dash or a negative number
+					opts[argBody] = guessType(shift())
+				} else {
+					// no following value, assume boolean flag
+					const value: boolean = !(argBody.startsWith('no-'))
+					const key = value ? argBody : argBody.substring(3)
+					opts[key] = Code.value(value)
+				}
+			}
 		} else {
 			main.push(arg)
 			// TODO: can we get some doctext when there is a main set and --help passed?
 			// throw new Error(`Unknown argument: ${arg}`)
 		}
 	}
-	
+
+	return { action, main, opts }
+}
+
+export async function main(config: Config, args: Array<string>): Promise<void> {
+	const { action, main, opts } = parseArgs(args)
 	const resolver = new Resolver(config)
 	if (action === 'list') {
 		await resolver.listEntrypoints(main)
@@ -69,7 +105,7 @@ export async function main(config: Config, args: Array<string>): Promise<void> {
 		} catch (e) {
 			const dump = (e instanceof Error ? e.stack : null) ?? String(e)
 			const msgPos = dump.indexOf(e.message)
-			if (msgPos > -1) {
+			if (Deno.isatty(Deno.stderr.rid) && msgPos > -1) {
 				const splitIdx = msgPos + e.message.length
 				Deno.stderr.writeSync(new TextEncoder().encode(red(dump.substring(0, splitIdx))))
 				console.error(gray(dump.substring(splitIdx)))

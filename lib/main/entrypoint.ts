@@ -10,7 +10,7 @@ export interface Code {
 
 export const Code = {
 	env: (key: string): Code => {
-		notNull(Deno.env.get(key), key)
+		notNull(Deno.env.get(key), '$' + key)
 		return { tsLiteral: `Deno.env.get(${JSON.stringify(key)}) as string` }
 	},
 	value: (v: any): Code => {
