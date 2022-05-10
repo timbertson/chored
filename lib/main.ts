@@ -7,7 +7,7 @@ import { Resolver, Code } from './main/entrypoint.ts'
 const bools: { [index: string]: boolean } = { true: true, false: false }
 
 interface Options {
-	action: 'run' | 'list'
+	action: 'run' | 'list' | 'help'
 	main: string[]
 	opts: { [index: string]: Code }
 }
@@ -35,7 +35,7 @@ export function parseArgs(args: Array<string>): Options {
 	
 	let main = []
 	let opts: { [index: string]: Code } = {}
-	let action: 'run' | 'list' = 'run'
+	let action: 'run' | 'list' | 'help' = 'run'
 	while(true) {
 		let arg = args.shift()
 		if (arg == null) {
@@ -62,6 +62,8 @@ export function parseArgs(args: Array<string>): Options {
 			opts[key] = Code.env(envKey)
 		} else if (arg == '--list' || arg == '-l') {
 			action = 'list'
+		} else if (arg === '--help' || arg == '-h') {
+			action = 'help'
 		} else if (arg === '--' || arg === '-') {
 			// pass remaining args
 			opts['args'] = Code.value(args)
@@ -99,6 +101,8 @@ export async function main(config: Config, args: Array<string>): Promise<void> {
 	const resolver = new Resolver(config)
 	if (action === 'list') {
 		await resolver.listEntrypoints(main)
+	} else if (action == 'help') {
+		await resolver.printHelp(main)
 	} else {
 		try {
 			await resolver.run(main, opts)

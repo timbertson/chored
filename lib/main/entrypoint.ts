@@ -2,7 +2,7 @@ import withTempFile from '../fs/with_temp_file.ts'
 import { notNull } from '../util/object.ts'
 import { partition, equalArrays, sort } from '../util/collection.ts'
 import { Config } from './config.ts'
-import { replaceSuffix } from '../util/string.ts'
+import { replaceSuffix, trimIndent } from '../util/string.ts'
 
 export interface Code {
 	tsLiteral: string
@@ -94,6 +94,18 @@ async function listFilesIn(path: string): Promise<string[]> {
 	return rv
 }
 
+function nonNullEntrypoint(main: string[], entrypoint: Entrypoint|null): Entrypoint {
+	if (entrypoint !== null) {
+		return entrypoint
+	} else {
+		throw new Error(`Chore ${JSON.stringify(main)} not found. Try ./chored --list`)
+	}
+}
+
+function niceId(entrypoint: Entrypoint): string {
+	return (entrypoint.fn === 'default') ? entrypoint.id[0] : entrypoint.id.join(' ')
+}
+
 export class Resolver {
 	config: Config
 
@@ -103,13 +115,9 @@ export class Resolver {
 
 	async run(main: Array<string>, opts: RunOpts): Promise<void> {
 		let entrypoint = await this.resolveEntrypoint(main)
-		if (entrypoint !== null) {
-			return runResolved(entrypoint, opts)
-		} else {
-			throw new Error(`Chore ${JSON.stringify(main)} not found. Try ./chored --list`)
-		}
+		return runResolved(nonNullEntrypoint(main, entrypoint), opts)
 	}
-
+	
 // return known entrypoint source within scopes, in priority order.
 	async *entrypointSources(restrictScope: string | null): AsyncIterable<EntrypointSource> {
 		if (restrictScope !== null && restrictScope.indexOf('/') !== -1) {
@@ -196,10 +204,29 @@ export class Resolver {
 					}
 				}
 				// only list `default` targets at the toplevel
-				const name = (entrypoint.fn === 'default') ? entrypoint.id[0] : entrypoint.id.join(' ')
-				log.push(` - ${name}`)
+				log.push(` - ${niceId(entrypoint)}`)
 			}
 		}
 		console.log(log.join('\n'))
+	}
+
+	async printHelp(main: Array<string>) {
+		if (main.length === 0) {
+			console.log(trimIndent(`
+				Usage: ./chored [MODULE] CHORE [OPTIONS]
+				
+				Options will be passed as a single argument to the given function:
+				  --string key value / -s key value / --key=value
+				  --bool flag true / --flag / --no-flag
+				  --num key int / -n key int / -n=int
+				  --env key ENVNAME / -e key ENVNAME
+				  --json '{ ... }'
+				  -- ARGS (passed as \`args\` string array)
+			`))
+		} else {
+			const entrypoint = nonNullEntrypoint(main, await this.resolveEntrypoint(main))
+			const help = (entrypoint.impl as any).help ?? "(implementation has no `help` attribute)"
+			console.info(`\nsource: ${entrypoint.module}\nchore:  ${niceId(entrypoint)}\n\n${help}`)
+		}
 	}
 }
