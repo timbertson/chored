@@ -1,3 +1,5 @@
+<img src="http://gfxmonk.net/dist/status/project/chored.png">
+
 # Chored
 
 Chores, **sorted**.
@@ -6,7 +8,7 @@ Chores, **sorted**.
 
 You can use it for anything, but it's built primarily to solve the problem of CI/CD reuse between repositories.
 
-**Chored is still experimental, it probably doesn't do what you want yet.**
+**Chored is still in early development, it may change significantly in the future**
 
 # Chored aims to solve problems with...
 
