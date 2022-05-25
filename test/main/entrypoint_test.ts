@@ -4,6 +4,7 @@ import withTempDir from '../../lib/fs/with_temp_dir.ts'
 import { Resolver } from '../../lib/main/entrypoint.ts'
 import { Config, defaultConfig } from '../../lib/main/config.ts'
 import * as builtins from '../../lib/chore/builtins.ts'
+import { run } from "../../lib/cmd.ts";
 
 interface MinimalEntrypoint {
 	module: string,
@@ -37,6 +38,8 @@ Deno.test("list / run entrypoints", (t) => withTempDir({}, async (dir) => {
 		export function b(opts: {}) { return "index b!" }
 		export default function(opts: {}) { return "default!" }
 	`)
+	
+	await run(['ln', '-s', 'dynamic.ts', `${dir}/link.ts`], { printCommand: false })
 
 	const moduleURI = (name: string) => `file://${dir}/${name}.ts`
 	const config: Config = { ...defaultConfig, taskRoot: dir }
@@ -56,6 +59,7 @@ Deno.test("list / run entrypoints", (t) => withTempDir({}, async (dir) => {
 				{ id: ['a', 'async'], viaDefault: false },
 				{ id: ['a', 'default'], viaDefault: false },
 				{ id: ['dynamic', 'impl'], viaDefault: true },
+				{ id: ['link', 'impl'], viaDefault: true },
 				{ id: ['b'], viaDefault: false },
 				{ id: ['default'], viaDefault: false },
 			].concat(builtinEntrypoints)
@@ -110,4 +114,20 @@ Deno.test("list / run entrypoints", (t) => withTempDir({}, async (dir) => {
 	await t.step("dynamically defined", async () => {
 		assertEquals(await resolver.run(['dynamic', 'impl'], {}), 'dynamic!')
 	})
+}))
+
+
+Deno.test("default.ts", (t) => withTempDir({}, async (dir) => {
+	await DenoFS.writeTextFile(`${dir}/default.ts`, `
+		export default function(opts: {}) { return "default!" }
+	`)
+
+	const moduleURI = (name: string) => `file://${dir}/${name}.ts`
+	const config: Config = { ...defaultConfig, taskRoot: dir }
+	const resolver = new Resolver(config)
+
+	assertEquals(await resolveEntrypoint(config, []), {
+		module: moduleURI('default'), fn: 'default', viaDefault: false
+	})
+	assertEquals(await resolver.run([], {}), 'default!')
 }))

@@ -86,8 +86,20 @@ function makeScopeMatcher(scope: string|null): (_: string) => boolean {
 
 async function listFilesIn(path: string): Promise<string[]> {
 	const rv: string[] = []
+
+	async function isFileLink(entry: Deno.DirEntry): Promise<boolean> {
+		if (entry.isSymlink) {
+			try {
+				return (await Deno.stat(`${path}/${entry.name}`)).isFile
+			} catch (e) {
+				// ignore
+			}
+		}
+		return false
+	}
+
 	for await (const entry of Deno.readDir(path)) {
-		if (entry.isFile) {
+		if (entry.isFile || isFileLink(entry)) {
 			rv.push(entry.name)
 		}
 	}
@@ -103,6 +115,7 @@ function nonNullEntrypoint(main: string[], entrypoint: Entrypoint|null): Entrypo
 }
 
 function niceId(entrypoint: Entrypoint): string {
+	// only list `default` targets at the toplevel
 	return (entrypoint.fn === 'default') ? entrypoint.id[0] : entrypoint.id.join(' ')
 }
 
@@ -158,7 +171,10 @@ export class Resolver {
 	}
 
 	async resolveEntrypoint(main: Array<string>): Promise<Entrypoint | null> {
-		const restrictScope = main[0] ?? null
+		if (main.length === 0) {
+			main = ['default']
+		}
+		const restrictScope = main[0]
 		const mainWithDefault = main.concat(['default'])
 
 		for await (const source of this.entrypointSources(restrictScope)) {
@@ -203,7 +219,6 @@ export class Resolver {
 						seen.add(entrypoint.fn)
 					}
 				}
-				// only list `default` targets at the toplevel
 				log.push(` - ${niceId(entrypoint)}`)
 			}
 		}
