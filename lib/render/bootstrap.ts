@@ -5,7 +5,7 @@ export interface Options {
 	mainModule?: string,
 }
 export const mainModule = replaceSuffix(import.meta.url, 'render/bootstrap.ts', 'main.ts')
-export const denoVersion = '1.18.0'
+export const denoVersion = '1.22.0'
 
 function makeScript(body: string) {
 	return `
@@ -42,7 +42,7 @@ _main() {
 		fi
 	fi
 
-	DENO_ARGV=(--unstable --allow-all)
+	DENO_ARGV=(--unstable --allow-all --check=local)
 ${body}
 }
 

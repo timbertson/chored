@@ -8,7 +8,7 @@ _main() {
 	fi
 	if [ -z "${DENO:-}" ]; then
 		CHORED_CACHE="${CHORED_CACHE:-$HOME/.cache/chored}"
-		DENO_VERSION="${DENO_VERSION:-1.18.0}"
+		DENO_VERSION="${DENO_VERSION:-1.22.0}"
 
 		PLATFORM_ARCH=""
 		# Add more as needed
@@ -33,7 +33,7 @@ _main() {
 		fi
 	fi
 
-	DENO_ARGV=(--unstable --allow-all)
+	DENO_ARGV=(--unstable --allow-all --check=local)
 
 	HEAD_SHA="$(git ls-remote https://github.com/timbertson/chored.git main | head -n 1 | cut -f 1)"
 	BOOTSTRAP="https://raw.githubusercontent.com/timbertson/chored/$HEAD_SHA/lib/bootstrap.ts"
