@@ -1,11 +1,26 @@
 import { Version, Index, namedIndexes, resolveIndex } from '../version.ts'
-import { filterNull, sort, sortBy } from '../util/collection.ts'
+import { filterNull, sortBy } from '../util/collection.ts'
+import { Partial } from '../util/object.ts'
 
-export interface BumpOptions {
-	versionTemplate: VersionTemplate
+interface CommonOptions {
 	defaultBump?: Index
-	action?: Action
-	trigger?: Trigger
+	component?: Index
+	action: Action
+	trigger: Trigger
+}
+
+export interface CliOptions extends Partial<CommonOptions> {
+	versionTemplate?: string
+	defaultTemplate?: string
+}
+
+export interface BumpOptions extends CommonOptions {
+	versionTemplate: VersionTemplate
+}
+
+export const defaultOptions: CommonOptions = {
+	action: 'tag',
+	trigger: 'always',
 }
 
 // x: free
@@ -149,7 +164,8 @@ export function nextVersion(template: VersionTemplate, currentVersion: Version |
 
 export interface CmdRunner {
 	run(cmd: string[]): Promise<void>
-	runOutput(cmd: string[], opts?: { allowFailure?: boolean }): Promise<string>
+	runOutput(cmd: string[]): Promise<string>
+	tryRunOutput(cmd: string[]): Promise<string>
 	exists(path: string): Promise<boolean>
 }
 
@@ -197,11 +213,11 @@ export class Engine {
 		const version = nextVersion(
 			opts.versionTemplate,
 			current?.version ?? null,
-			{ index: directive.index, defaultBump: opts.defaultBump }
+			{ index: opts.component || directive.index, defaultBump: opts.defaultBump }
 		)
 
-		const trigger = opts.trigger ?? 'always'
-		const action = opts.action ?? 'tag'
+		const trigger = opts.trigger
+		const action = opts.action
 		if (trigger === 'always' || directive.release) {
 			await this.applyVersion(action, version)
 			return version
@@ -281,11 +297,10 @@ export class Engine {
 
 			// So we don't trip on any tags which happen to begin with `v`, we require at least one digit
 			const matchFlags = [0,1,2,3,4,5,6,7,8,9].flatMap(n => ['--match', `v${n}*`])
-			const describeOutput = await self.runner.runOutput(
+			const describeOutput = await self.runner.tryRunOutput(
 				['git', 'describe', '--tags', '--first-parent', ]
 				.concat(matchFlags).
-				concat(['--always', '--long', self.ctx.mergeTargetRef]),
-				{ allowFailure: true }
+				concat(['--always', '--long', self.ctx.mergeTargetRef])
 			)
 			console.log("Git describe output: "+ describeOutput)
 			return Engine.parseGitDescribe(describeOutput)

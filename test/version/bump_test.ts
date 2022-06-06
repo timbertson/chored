@@ -1,5 +1,5 @@
 import { assertEquals, assertThrows, assertExists } from '../common.ts'
-import { CmdRunner, Context, defaultContext, Engine, nextVersion, NextVersionOptions, parseCommitLines, VersionTemplate } from '../../lib/version/bump_impl.ts'
+import { CmdRunner, Context, defaultContext, defaultOptions, Engine, nextVersion, NextVersionOptions, parseCommitLines, VersionTemplate } from '../../lib/version/bump_impl.ts'
 import { notNull } from "../../lib/util/object.ts";
 import { Version } from "../../lib/version.ts";
 import { Audit } from "../../lib/test/audit.ts";
@@ -163,7 +163,10 @@ Deno.test('Engine', async (t) => {
 	await t.step('skips if already tagged', async () => {
 		const c = new Ctx()
 		c.respond(['git', 'describe'], 'v1.1-0-gd14d21c')
-		assertEquals(await c.engine.bump({ versionTemplate: VersionTemplate.unrestricted(3) }), null)
+		assertEquals(await c.engine.bump({
+			...defaultOptions,
+			versionTemplate: VersionTemplate.unrestricted(3)
+		}), null)
 	})
 
 	await t.step('directive parsing', async () => {
