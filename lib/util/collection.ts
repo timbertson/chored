@@ -3,6 +3,18 @@ export function sort<T>(items: T[], cmp?: (a: T, b: T) => number): T[] {
 	return items
 }
 
+export function filterNull<T>(items: Array<T|null>): T[] {
+	return items.filter(x => x != null) as Array<T>
+}
+
+export function sortBy<T>(items: T[], key: (t: T) => number, reverse?: boolean): T[] {
+	const sorted = sort(items, (a: T, b: T) => key(a) - key(b))
+	if (reverse) {
+		items.reverse()
+	}
+	return items
+}
+
 export function dedupeSort<T>(items: T[], cmp?: (a: T, b: T) => number): T[] {
 	return sort(dedupe(items))
 }

@@ -1,32 +1,60 @@
+export const namedIndexes = ["major", "minor", "patch"]
+export type Index = number | 'major' | 'minor' | 'patch'
+
+export function resolveIndex(i: Index): number {
+	if (i === 'major') return 0
+	if (i === 'minor') return 1
+	if (i === 'patch') return 2
+	return i
+}
+
 export class Version {
-	prefix: string
-	suffix: string
-	numbers: Array<number>
-	
-	constructor(prefix: string, numbers: Array<number>, suffix: string) {
-		this.prefix = prefix
-		this.suffix = suffix
-		this.numbers = numbers
+	parts: number[]
+
+	constructor(parts: number[]) {
+		this.parts = parts
 	}
 	
-	static parse(s: String) {
-		const match = s.match(/^([^0-9.]*)([0-9]+(?:\.[0-9]+)+)([^0-9.].*)?$/)
-		if (!match) {
+	show() {
+		return this.parts.join('.')
+	}
+
+	tag(): string {
+		return "v" + this.show()
+	}
+
+	static parsePart(p: string) {
+		let digits = p.match(/^[0-9]+$/)
+		if (digits == null) {
+			throw new Error("Invalid version component: " + p)
+		}
+		return parseInt(p, 10)
+	}
+
+	static split(v: string) {
+		if (v[0] == 'v') {
+			v = v.slice(1)
+		}
+		return v.split('.')
+	}
+
+	static parse(v: string): Version {
+		return new Version(Version.split(v).map(Version.parsePart))
+	}
+
+	static parseLax(s: String) {
+		const stripped = s.replaceAll(/(^[^0-9]*)|([^0-9]*$)/g, '')
+		try {
+			return Version.parse(stripped)
+		} catch (_e: any) {
 			return null
 		}
-		const [_all, prefix, numStr, suffix] = match
-		let numbers = numStr.split('.').map(n => parseInt(n, 10))
-		return new Version(prefix, numbers, suffix || '')
 	}
-	
-	format(): string {
-		return `${this.prefix}${this.numbers.join('.')}${this.suffix}`
-	}
-	
+
 	static compare(a: Version, b: Version) {
 		function compareIndex(i: number): number {
-			const ap = a.numbers[i]
-			const bp = b.numbers[i]
+			const ap = a.parts[i]
+			const bp = b.parts[i]
 			if (ap == null) {
 				if (bp == null) {
 					// totally equal

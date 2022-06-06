@@ -1,13 +1,18 @@
-import { assertEquals } from './common.ts'
+import { assertEquals, assertThrows } from './common.ts'
 import { Version } from '../lib/version.ts'
 
-const nums = (...numbers: number[]) => new Version('', numbers, '')
+const nums = (...numbers: number[]) => new Version(numbers)
 
 Deno.test('version parsing', () => {
+	assertEquals(Version.parseLax('1.2.3'), nums(1,2,3))
+	assertEquals(Version.parseLax('foo'), null)
+	assertEquals(Version.parseLax('v1.2.3-rc')?.show(), '1.2.3')
+	assertEquals(Version.parseLax('v1.2.3')?.show(), '1.2.3')
+	assertEquals(Version.parseLax('version-10.200.33'), nums(10,200,33))
+
 	assertEquals(Version.parse('1.2.3'), nums(1,2,3))
-	assertEquals(Version.parse('v1.2.3rc1'), new Version('v', [1,2,3], 'rc1'))
-	assertEquals(Version.parse('v1.2.3rc1')?.format(), 'v1.2.3rc1')
-	assertEquals(Version.parse('version-10.200.33'), new Version('version-', [10,200,33], ''))
+	assertEquals(Version.parse('v1.2.3'), nums(1,2,3))
+	assertThrows(() => Version.parse('v1.2.3-rc1'))
 })
 
 Deno.test('ordering',() => {
