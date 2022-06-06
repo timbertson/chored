@@ -52,6 +52,19 @@ class Ctx {
 	
 	constructor(ctx: Context = defaultContext) {
 		const self = this
+		function runOutput(cmd: string[], allowFailure: boolean) {
+			const r = self.consumeResponse(cmd)
+			if (r === false) {
+				if (allowFailure) {
+					return ''
+				} else {
+					throw new Error(`injected command failure: ${cmd.join(' ')}`)
+				}
+			} else if (r === true) {
+				throw new Error(`Unexpected response type: ${r}`)
+			}
+			return r
+		}
 		const runner: CmdRunner = {
 			run: async (cmd: string[]) => {
 				const success = self.consumeBool(cmd, true)
@@ -59,19 +72,8 @@ class Ctx {
 					throw new Error("cmd failed")
 				}
 			},
-			runOutput: async (cmd: string[], opts?: { allowFailure?: boolean }) => {
-				const r = self.consumeResponse(cmd)
-				if (r === false) {
-					if (opts?.allowFailure === true) {
-						return ''
-					} else {
-						throw new Error(`injected command failure: ${cmd.join(' ')}`)
-					}
-				} else if (r === true) {
-					throw new Error(`Unexpected response type: ${r}`)
-				}
-				return r
-			},
+			tryRunOutput: async (cmd: string[]) => runOutput(cmd, true),
+			runOutput: async (cmd: string[]) => runOutput(cmd, false),
 			exists: async (p: string) => {
 				return self.consumeBool(['stat', p], false)
 			}
@@ -117,8 +119,8 @@ Deno.test('Engine', async (t) => {
 	await t.step('describe on a deep repository', async () => {
 		const c = new Ctx()
 		c.respond(['git', 'describe'], describeOutput)
-		assertEquals(await c.engine.describeWithAutoDeepen(), {
-			version: Version.parse('1.0'),
+		assertEquals({ ... await c.engine.describeWithAutoDeepen(), commit: 'HEAD'}, {
+			commit: 'HEAD',
 			tag: 'v1.0',
 			isExact: false
 		})
@@ -128,7 +130,7 @@ Deno.test('Engine', async (t) => {
 	await t.step('describe with no tags', async () => {
 		const c = new Ctx()
 		c.respond(['git', 'describe'], 'abcd')
-		assertEquals(await c.engine.describeWithAutoDeepen(), null)
+		assertEquals((await c.engine.describeWithAutoDeepen()).tag, null)
 		assertEquals(fetches(c), [])
 	})
 

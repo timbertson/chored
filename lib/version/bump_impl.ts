@@ -1,6 +1,7 @@
 import { Version, Index, namedIndexes, resolveIndex } from '../version.ts'
 import { filterNull, sortBy } from '../util/collection.ts'
 import { Partial } from '../util/object.ts'
+import { DescribedVersion, describeCmd, parseDescribe } from '../git/describe_impl.ts'
 
 interface CommonOptions {
 	defaultBump?: Index
@@ -179,12 +180,6 @@ export const defaultContext: Context = {
 	mergeTargetRef: 'HEAD',
 }
 
-interface DescribedVersion {
-	version: Version
-	tag: string
-	isExact: boolean
-}
-
 export class Engine {
 	private runner: CmdRunner
 	private ctx: Context
@@ -198,10 +193,11 @@ export class Engine {
 		const current = await this.describeWithAutoDeepen()
 
 		let directive: CommitDirective = { index: null, release: false }
-		if (current == null) {
+		const currentVersion = current.tag == null ? null : Version.parse(current.tag)
+		if (current.tag == null) {
 			console.log("No current version detected")
 		} else {
-			console.log("Current version: " + (current.version) + " (from tag "+current.tag+")")
+			console.log("Current version: " + currentVersion + " (from tag "+current.tag+")")
 			if (current.isExact) {
 				console.log("Commit is already tagged")
 				return null
@@ -212,7 +208,7 @@ export class Engine {
 		
 		const version = nextVersion(
 			opts.versionTemplate,
-			current?.version ?? null,
+			currentVersion,
 			{ index: opts.component || directive.index, defaultBump: opts.defaultBump }
 		)
 
@@ -224,25 +220,6 @@ export class Engine {
 		} else {
 			console.log("No version bump required")
 			return null
-		}
-	}
-
-	static parseGitDescribe(output: string): DescribedVersion | null {
-		const parts = output.split('-')
-		if (parts.length == 1) {
-			// just a git commit
-			return null
-		} else if (parts.length > 2) {
-			// output is e.g. v1.3.0-3-gf32721e
-			let tag = parts.slice(0, parts.length - 2).join('-')
-			let depth = parts[parts.length - 2]
-			return {
-				tag: tag,
-				version: Version.parse(tag),
-				isExact: depth == '0',
-			}
-		} else {
-			throw new Error("Unexpected `git describe` output: " + output)
 		}
 	}
 
@@ -271,9 +248,9 @@ export class Engine {
 	// https://lore.kernel.org/git/CAC-LLDiu9D7Ea-HaAsR4GO9PVGAeXOc8aRoebCFLgDKow=hPTQ@mail.gmail.com/T/
 	// TODO if this doesn't work, we can `ls-remote` to get tags, then `git merge-base --is-ancestor candidate HEAD.
 	// But remote tags might be huge, so we'll try and get away without that
-	async describeWithAutoDeepen(): Promise<DescribedVersion|null> {
+	async describeWithAutoDeepen(): Promise<DescribedVersion> {
 		const self = this
-		async function describe(): Promise<DescribedVersion|null> {
+		async function describe(): Promise<DescribedVersion> {
 			// For a PR, we find the last tag reachable from the base ref (the branch we're merging into),
 			// rather than HEAD. Github creates the HEAD merge commit when you create / push a PR,
 			// so it won't always contain everything in the target branch:
@@ -296,19 +273,14 @@ export class Engine {
 			// will ensure that `git describe` only searches the mainline history, not the version branch.
 
 			// So we don't trip on any tags which happen to begin with `v`, we require at least one digit
-			const matchFlags = [0,1,2,3,4,5,6,7,8,9].flatMap(n => ['--match', `v${n}*`])
-			const describeOutput = await self.runner.tryRunOutput(
-				['git', 'describe', '--tags', '--first-parent', ]
-				.concat(matchFlags).
-				concat(['--always', '--long', self.ctx.mergeTargetRef])
-			)
+			const describeOutput = await self.runner.tryRunOutput(describeCmd(self.ctx.mergeTargetRef))
 			console.log("Git describe output: "+ describeOutput)
-			return Engine.parseGitDescribe(describeOutput)
+			return parseDescribe(describeOutput)
 		}
 
-		async function loop(tries: number): Promise<DescribedVersion|null> {
+		async function loop(tries: number): Promise<DescribedVersion> {
 			const ret = await describe()
-			if (ret != null || tries < 1) {
+			if (ret.tag != null || tries < 1) {
 				return ret
 			} else {
 				// on the last attempt, we do a full clone

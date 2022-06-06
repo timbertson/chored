@@ -1,5 +1,10 @@
 import { run, RunOpts, runOutput, RunResult } from './cmd.ts'
 import { notNull, merge } from './util/object.ts'
+import { DescribedVersion as BaseDescribedVersion, describeCmd, parseDescribe } from './git/describe_impl.ts'
+import { Version } from "./version.ts";
+export interface DescribedVersion extends BaseDescribedVersion {
+	version: Version | null
+}
 
 export interface Identity {
 	name: string,
@@ -153,4 +158,9 @@ export async function amendAllChanges(options: AmendAllOptions): Promise<void> {
 		...runOpts(options),
 		printCommand: true
 	})
+}
+
+export async function describeVersion(ref: string = 'HEAD'): Promise<DescribedVersion> {
+	const base = parseDescribe(await runOutput(describeCmd(ref), { printCommand: false }))
+	return { ...base, version: base.tag ? Version.parse(base.tag) : null }
 }

@@ -5,4 +5,5 @@
 export { default as bump } from './bump.ts'
 export { default as lock } from './lock.ts'
 export { default as render } from './render.ts'
+export { default as version } from './version.ts'
 export { default as versionBump } from './version_bump.ts'
