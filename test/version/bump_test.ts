@@ -1,5 +1,13 @@
 import { assertEquals, assertThrows } from '../common.ts'
-import { defaultContext, defaultOptions, Engine, nextVersion, NextVersionOptions, parseCommitLines, VersionTemplate } from '../../lib/version/bump_impl.ts'
+import {
+	defaultContext,
+	defaultOptions,
+	Engine,
+	nextVersion,
+	NextVersionOptions,
+	parseCommitLines,
+	VersionTemplate
+} from '../../lib/version/git_bump.ts'
 import { Ctx } from '../git/ctx.ts'
 import { notNull } from "../../lib/util/object.ts";
 import { Version } from "../../lib/version.ts";
@@ -23,7 +31,7 @@ Deno.test('nextVersion', () => {
 		return nextVersion(
 			notNull(VersionTemplate.parse(t)),
 			Version.parse(v),
-			opts ?? { index: null }
+			opts ?? { component: null }
 		).show()
 	}
 	
@@ -36,19 +44,19 @@ Deno.test('nextVersion', () => {
 	assertEquals(n('1.2', '0.2'), '1.2.0')
 	assertEquals(n('1.x.x.x', '0.1.2.3'), '1.0.0.0')
 
-	assertEquals(n('x.x', '0.2', { index: 'major' }), '1.0')
-	assertEquals(n('x.0', '0.2', { defaultBump: 'minor', index: null }), '1.0')
-	assertThrows(() => n('1.x', '0.2', { index: 'major' }), undefined,
-		'Requested index (major) is incompatible with version template: 1.x')
-	assertThrows(() => n('1.x.0', '0.2', { index: 'patch' }), undefined,
-		'Requested index (patch) is incompatible with version template: 1.x.0')
+	assertEquals(n('x.x', '0.2', { component: 'major' }), '1.0')
+	assertEquals(n('x.0', '0.2', { defaultComponent: 'minor', component: null }), '1.0')
+	assertThrows(() => n('1.x', '0.2', { component: 'major' }), undefined,
+		'Requested component (major) is incompatible with version template: 1.x')
+	assertThrows(() => n('1.x.0', '0.2', { component: 'patch' }), undefined,
+		'Requested component (patch) is incompatible with version template: 1.x.0')
 })
 
 Deno.test('directive parsing', () => {
-	assertEquals(parseCommitLines('abcd [release] commit'), { release: true, index: null })
-	assertEquals(parseCommitLines('abcd [release] commit\nabcd [major] commit'), { release: true, index: 'major' })
-	assertEquals(parseCommitLines('abcd [patch] commit'), { release: false, index: 'patch' })
-	assertEquals(parseCommitLines('abcd [minor-release] commit'), { release: true, index: 'minor' })
+	assertEquals(parseCommitLines('abcd [release] commit'), { release: true, component: null })
+	assertEquals(parseCommitLines('abcd [release] commit\nabcd [major] commit'), { release: true, component: 'major' })
+	assertEquals(parseCommitLines('abcd [patch] commit'), { release: false, component: 'patch' })
+	assertEquals(parseCommitLines('abcd [minor-release] commit'), { release: true, component: 'minor' })
 })
 
 Deno.test('Engine', async (t) => {

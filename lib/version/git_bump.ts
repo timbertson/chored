@@ -4,7 +4,7 @@ import { Partial } from '../util/object.ts'
 import { CmdRunner, describeWithAutoDeepen } from '../git/describe_impl.ts'
 
 interface CommonOptions {
-	defaultBump?: Index
+	defaultComponent?: Index
 	component?: Index
 	action: Action
 	trigger: Trigger
@@ -111,27 +111,27 @@ export class VersionTemplate {
 
 interface CommitDirective {
 	release: boolean
-	index: Index | null
+	component: Index | null
 }
 
 export interface NextVersionOptions {
-	defaultBump?: Index
-	index: Index | null
+	defaultComponent?: Index
+	component: Index | null
 }
 
 export function nextVersion(template: VersionTemplate, currentVersion: Version | null, options: NextVersionOptions): Version {
 	let chosenIndex = template.minimalIndex
-	if (options.index != null) {
-		chosenIndex = resolveIndex(options.index)
+	if (options.component != null) {
+		chosenIndex = resolveIndex(options.component)
 		if (!template.isFree(chosenIndex)) {
-			throw new Error(`Requested index (${options.index}) is incompatible with version template: ${template.show()}`)
+			throw new Error(`Requested component (${options.component}) is incompatible with version template: ${template.show()}`)
 		}
-		console.log(`Using index from commit message: ${options.index}`)
-	} else if (options.defaultBump != null) {
-		// upgrade to preferred index, if allowed
-		const preferredIndex = options.defaultBump
+		console.log(`Using component from commit message: ${options.component}`)
+	} else if (options.defaultComponent != null) {
+		// upgrade to preferred component, if allowed
+		const preferredIndex = options.defaultComponent
 		if (template.isFree(resolveIndex(preferredIndex))) {
-			console.log(`Using default index: ${preferredIndex}`)
+			console.log(`Using default component: ${preferredIndex}`)
 			chosenIndex = resolveIndex(preferredIndex)
 		}
 	}
@@ -205,7 +205,7 @@ export class Engine {
 		// will ensure that `git describe` only searches the mainline history, not the version branch.
 		const current = await describeWithAutoDeepen(this.runner, this.ctx.mergeTargetRef)
 
-		let directive: CommitDirective = { index: null, release: false }
+		let directive: CommitDirective = { component: null, release: false }
 		const currentVersion = current.tag == null ? null : Version.parse(current.tag)
 		if (current.tag == null) {
 			console.log("No current version detected")
@@ -222,7 +222,7 @@ export class Engine {
 		const version = nextVersion(
 			opts.versionTemplate,
 			currentVersion,
-			{ index: opts.component || directive.index, defaultBump: opts.defaultBump }
+			{ component: opts.component || directive.component, defaultComponent: opts.defaultComponent }
 		)
 
 		const trigger = opts.trigger
@@ -262,19 +262,19 @@ export function parseCommitLines(commitLines: string): CommitDirective {
 		let withoutRelease = label.replace(/-release$/, "")
 		if (namedIndexes.includes(withoutRelease)) {
 			return {
-				index: withoutRelease as Index,
+				component: withoutRelease as Index,
 				release: withoutRelease !== label
 			}
 		} else {
 			return {
-				index: null,
+				component: null,
 				release: label === 'release'
 			}
 		}
 	}
 
 	if (commitLines.length == 0) {
-		return { release: false, index: null }
+		return { release: false, component: null }
 	}
 	let tags = commitLines.match(/\[\S+\]/gm) || []
 	// console.log("tags: " + JSON.stringify(tags))
@@ -286,7 +286,7 @@ export function parseCommitLines(commitLines: string): CommitDirective {
 
 	return {
 		release: labels.find((desc) => desc.release) != null,
-		index: sortBy(filterNull(labels.map((d) => d.index)), resolveIndex)[0] ?? null
+		component: sortBy(filterNull(labels.map((d) => d.component)), resolveIndex)[0] ?? null
 	}
 }
 

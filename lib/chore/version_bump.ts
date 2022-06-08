@@ -6,7 +6,7 @@ import {
 	defaultContext,
 	defaultOptions,
 	Action
-} from '../version/bump_impl.ts'
+} from '../version/git_bump.ts'
 import { Version } from '../version.ts'
 import * as GH from '../github/run_env.ts'
 import * as Git from '../git.ts'
