@@ -1,6 +1,6 @@
 import withTempFile from '../fs/with_temp_file.ts'
 import { notNull } from '../util/object.ts'
-import { partition, equalArrays, sort } from '../util/collection.ts'
+import { partition, equalArrays, sort, sortByCmp } from '../util/collection.ts'
 import { Config } from './config.ts'
 import { replaceSuffix, trimIndent } from '../util/string.ts'
 
@@ -19,39 +19,61 @@ export const Code = {
 }
 
 type Id = [string] | [string, string]
+type Scope = [] | [string]
+
+function assertId(parts: string[]): Id {
+	if (parts.length === 1 || parts.length === 2) {
+		return parts as Id
+	} else {
+		throw new Error(`Expected 1 or 2 components in Id, found ${parts.length}`)
+	}
+}
 
 export interface Entrypoint {
 	module: string,
 	id: Id,
-	fn: string,
+	symbol: string[],
 	impl: Function,
-	viaDefault: boolean,
 }
 
 interface EntrypointSource {
-	scope: string | null, // used to skip loading entrypoints that can't match
+	scope: Scope, // used to skip loading entrypoints that can't match
 	entrypoints(): Promise<Entrypoint[]>
 }
 
 const builtinChores = () => replaceSuffix(import.meta.url, 'main/entrypoint.ts', 'chore/builtins.ts')
 
-function isFunction(fn: any): fn is Function {
-	return typeof(fn) === 'function'
+function isChoredef(fn: any): fn is Function {
+	return typeof(fn) === 'function' && (fn?.isChoredef ?? true === true)
 }
 
-async function entrypointsFromModule(scope: string|null, module: string): Promise<Entrypoint[]> {
-	const api = await import(module)
+function entrypointsFrom(module: string): (scope: Scope, symbol: string[], obj: any) => Entrypoint[] {
+	return function scan(scope: string[], symbol: string[], obj: any): Entrypoint[] {
+		function makeId(name: string): Id {
+			return assertId(scope.concat(name))
+		}
 
-	const makeId: (_: string) => Id = scope === null ? x => [x] : x => [scope, x]
-	function tasksOn(base: any, viaDefault: boolean): Entrypoint[] {
-		return sort(Object.keys(base)).flatMap((key) => {
-			// TODO check for number of arguments?
-			const impl = base[key]
-			return isFunction(impl) ? [{ id: makeId(key), module, fn: key, impl, viaDefault }] : []
+		const keys = Object.getOwnPropertyNames(obj)
+		const entrypoints = keys.flatMap((key) => {
+			const newPath = symbol.concat(key)
+			const impl = obj[key]
+			if (isChoredef(impl)) {
+				return [{ id: makeId(key), module, symbol: newPath, impl }]
+			} else {
+				if (typeof(impl) === 'object') {
+					if (key === 'default') {
+						// merge default into the same scope
+						return scan(scope, newPath, impl)
+					} else if (scope.length == 0) {
+						// recurse into this object
+						return scan([key], newPath, impl)
+					}
+				}
+				return []
+			}
 		})
+		return sortByCmp(entrypoints, (a: string, b: string) => a.localeCompare(b), (e) => e.id.join('.'))
 	}
-
-	return tasksOn(api, false).concat(tasksOn(api.default ?? {}, true))
 }
 
 export interface RunOpts {
@@ -67,12 +89,13 @@ export async function runResolved(entrypoint: Entrypoint, opts: RunOpts): Promis
 	let optsCode = `{\n${indent}` + Object.entries(opts).map(([k,v]) => `${k}: ${v.tsLiteral}`).join(`,\n${indent}`) + `\n${indent}}`
 
 	const tsLiteral = `
-		import ${entrypoint.viaDefault ? 'mod' : '* as mod'} from ${JSON.stringify(entrypoint.module)}
+		import * as mod from ${JSON.stringify(entrypoint.module)}
 		export default function() {
-			return mod['${entrypoint.fn}'](${optsCode})
+			return mod${entrypoint.symbol.map(s => `['${s}']`).join('')}(${optsCode})
 		}
 	`
 	const compiled = await withTempFile({ prefix: "chored_", suffix: ".ts" }, async (tempFile: string) => {
+		// console.log(tsLiteral)
 		await Deno.writeTextFile(tempFile, tsLiteral)
 		return await import('file://' + tempFile)
 	})
@@ -80,8 +103,8 @@ export async function runResolved(entrypoint: Entrypoint, opts: RunOpts): Promis
 	return isPromise(result) ? await result : result
 }
 
-function makeScopeMatcher(scope: string|null): (_: string) => boolean {
-	return scope === null ? _ => true : name => name === scope
+function makeScopeMatcher(scope: Scope): (_: string[]) => boolean {
+	return scope.length === 0 ? _ => true : candidate => equalArrays(candidate.slice(0, scope.length), scope)
 }
 
 async function listFilesIn(path: string): Promise<string[]> {
@@ -115,8 +138,12 @@ function nonNullEntrypoint(main: string[], entrypoint: Entrypoint|null): Entrypo
 }
 
 function niceId(entrypoint: Entrypoint): string {
-	// only list `default` targets at the toplevel
-	return (entrypoint.fn === 'default') ? entrypoint.id[0] : entrypoint.id.join(' ')
+	// remove trailing `default`, unless that makes it empty
+	let path: string[] = entrypoint.id
+	if (path.length > 1 && path[path.length - 1] === 'default') {
+		path = path.slice(0, -1)
+	}
+	return path.join(' ')
 }
 
 export class Resolver {
@@ -132,11 +159,19 @@ export class Resolver {
 	}
 	
 // return known entrypoint source within scopes, in priority order.
-	async *entrypointSources(restrictScope: string | null): AsyncIterable<EntrypointSource> {
+	async *entrypointSources(restrictScopeArray: Scope, opts?: { includeBuiltins: boolean }): AsyncIterable<EntrypointSource> {
+		async function entrypointsFromModule(scope: Scope, url: string) {
+			return entrypointsFrom(url)(scope, [], await import(url))
+		}
+
+		const restrictScope: string|null = restrictScopeArray[0] ?? null
 		if (restrictScope !== null && restrictScope.indexOf('/') !== -1) {
 			// assume file or URL and load directly
 			const url = restrictScope.indexOf('://') === -1 ? `file://${Deno.cwd()}/${restrictScope}` : restrictScope
-			yield { scope: restrictScope, entrypoints: () => entrypointsFromModule(restrictScope, url) }
+			yield {
+				scope: restrictScopeArray,
+				entrypoints: () => entrypointsFromModule([restrictScope], url),
+			}
 		} else {
 			const files = (await listFilesIn(this.config.taskRoot)).filter(f => f.endsWith('.ts'))
 
@@ -151,21 +186,23 @@ export class Resolver {
 				}
 				const fileScope = taskOfFilename(filename)
 				yield {
-					scope: fileScope,
-					entrypoints: () => entrypointsFromModule(fileScope, `file://${this.config.taskRoot}/${filename}`)
+					scope: [fileScope],
+					entrypoints: () => entrypointsFromModule([fileScope], `file://${this.config.taskRoot}/${filename}`)
 				}
 			}
 
 			for (const filename of indexFiles) {
 				yield {
-					scope: null,
-					entrypoints: () => entrypointsFromModule(null, `file://${this.config.taskRoot}/${filename}`)
+					scope: [],
+					entrypoints: () => entrypointsFromModule([], `file://${this.config.taskRoot}/${filename}`)
 				}
 			}
 			
-			yield {
-				scope: null,
-				entrypoints: () => entrypointsFromModule(null, builtinChores())
+			if (opts?.includeBuiltins ?? true === true) {
+				yield {
+					scope: [],
+					entrypoints: () => entrypointsFromModule([], builtinChores())
+				}
 			}
 		}
 	}
@@ -174,14 +211,10 @@ export class Resolver {
 		if (main.length === 0) {
 			main = ['default']
 		}
-		const restrictScope = main[0]
+		const restrictScope = main.slice(0, 1) as Scope
 		const mainWithDefault = main.concat(['default'])
 
 		for await (const source of this.entrypointSources(restrictScope)) {
-			if (source.scope === null && main.length > 1) {
-				// unscoped (index) modules only have 1 component, and we need 2
-				continue
-			}
 			const isMain = (e: Entrypoint) =>
 				equalArrays(e.id, e.id.length === main.length ? main : mainWithDefault)
 			const entry = (await source.entrypoints()).find(isMain)
@@ -193,32 +226,19 @@ export class Resolver {
 	}
 
 	async listEntrypoints(main: Array<string>) {
-		const scope = main[0] ?? null
+		const scope = main.slice(0, 1) as Scope
 		const matchesScope = makeScopeMatcher(scope)
-		const seen = new Set<string>()
 		const log: Array<string | string[]> = ['']
 		for await (const source of this.entrypointSources(scope)) {
-			let entrypoints = await source.entrypoints()
-			if (source.scope === null) {
-				entrypoints = entrypoints.filter(e => matchesScope(e.fn) && !seen.has(e.fn))
-				if (entrypoints.length > 0) {
-					log.push(`\n[ from ${entrypoints[0].module} ]:`)
-				}
-			} else {
-				if (!matchesScope(source.scope)) {
-					continue
-				}
-				seen.add(source.scope)
+			if (!matchesScope(source.scope)) {
+				continue
+			}
+			const entrypoints = (await source.entrypoints()).filter(e => matchesScope(e.id))
+			if (entrypoints.length > 0) {
+				log.push(`\n[ from ${entrypoints[0].module} ]:`)
 			}
 
 			for (const entrypoint of entrypoints) {
-				if (source.scope === null) {
-					if (seen.has(entrypoint.fn)) {
-						continue
-					} else {
-						seen.add(entrypoint.fn)
-					}
-				}
 				log.push(` - ${niceId(entrypoint)}`)
 			}
 		}
