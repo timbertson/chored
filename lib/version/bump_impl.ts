@@ -1,7 +1,7 @@
 import { Version, Index, namedIndexes, resolveIndex } from '../version.ts'
 import { filterNull, sortBy } from '../util/collection.ts'
 import { Partial } from '../util/object.ts'
-import { DescribedVersion, describeCmd, parseDescribe } from '../git/describe_impl.ts'
+import { CmdRunner, describeWithAutoDeepen } from '../git/describe_impl.ts'
 
 interface CommonOptions {
 	defaultBump?: Index
@@ -163,13 +163,6 @@ export function nextVersion(template: VersionTemplate, currentVersion: Version |
 	}
 }
 
-export interface CmdRunner {
-	run(cmd: string[]): Promise<void>
-	runOutput(cmd: string[]): Promise<string>
-	tryRunOutput(cmd: string[]): Promise<string>
-	exists(path: string): Promise<boolean>
-}
-
 export interface Context {
 	headRef: string
 	mergeTargetRef: string
@@ -190,7 +183,27 @@ export class Engine {
 	}
 
 	async bump(opts: BumpOptions): Promise<Version|null> {
-		const current = await this.describeWithAutoDeepen()
+		// For a PR, we find the last tag reachable from the base ref (the branch we're merging into),
+		// rather than HEAD. Github creates the HEAD merge commit when you create / push a PR,
+		// so it won't always contain everything in the target branch:
+		//
+		//   * master (v1.2.3)
+		//   |
+		//   |  * HEAD (PR auto merge commit)
+		//   |/ |
+		//   |  * PR: my cool feature
+		//   | /
+		//   * master^ (v1.2.2)
+		//   |
+		//   (...)
+		//
+		// If we just used HEAD, we'd pick a conflicting `v1.2.3` for this PR and fail,
+		// even though once merged it would correctly pick v1.2.4
+		//
+		// In the case where you merge a version branch into master (i.e. both have version tags),
+		// the PR will naturally only consider the master branch. Once merged, `--first-parent`
+		// will ensure that `git describe` only searches the mainline history, not the version branch.
+		const current = await describeWithAutoDeepen(this.runner, this.ctx.mergeTargetRef)
 
 		let directive: CommitDirective = { index: null, release: false }
 		const currentVersion = current.tag == null ? null : Version.parse(current.tag)
@@ -241,62 +254,6 @@ export class Engine {
 		// if we're running on a PR, use the head ref (branch to be merged)
 		// instead of the HEAD (which is actually a merge of the PR against `master`)
 		return this.runner.runOutput(['git', 'log', '--format=format:%s', tag + '..' + this.ctx.headRef, '--'])
-	}
-
-	// https://stackoverflow.com/questions/56477321/can-i-make-git-fetch-a-repository-tag-list-without-actually-pulling-the-commit-d
-	// The docs say this simple approach doesn't work, but.. the docs are wrong in our favour?
-	// https://lore.kernel.org/git/CAC-LLDiu9D7Ea-HaAsR4GO9PVGAeXOc8aRoebCFLgDKow=hPTQ@mail.gmail.com/T/
-	// TODO if this doesn't work, we can `ls-remote` to get tags, then `git merge-base --is-ancestor candidate HEAD.
-	// But remote tags might be huge, so we'll try and get away without that
-	async describeWithAutoDeepen(): Promise<DescribedVersion> {
-		const self = this
-		async function describe(): Promise<DescribedVersion> {
-			// For a PR, we find the last tag reachable from the base ref (the branch we're merging into),
-			// rather than HEAD. Github creates the HEAD merge commit when you create / push a PR,
-			// so it won't always contain everything in the target branch:
-			//
-			//   * master (v1.2.3)
-			//   |
-			//   |  * HEAD (PR auto merge commit)
-			//   |/ |
-			//   |  * PR: my cool feature
-			//   | /
-			//   * master^ (v1.2.2)
-			//   |
-			//   (...)
-			//
-			// If we just used HEAD, we'd pick a conflicting `v1.2.3` for this PR and fail,
-			// even though once merged it would correctly pick v1.2.4
-			//
-			// In the case where you merge a version branch into master (i.e. both have version tags),
-			// the PR will naturally only consider the master branch. Once merged, `--first-parent`
-			// will ensure that `git describe` only searches the mainline history, not the version branch.
-
-			// So we don't trip on any tags which happen to begin with `v`, we require at least one digit
-			const describeOutput = await self.runner.tryRunOutput(describeCmd(self.ctx.mergeTargetRef))
-			console.log("Git describe output: "+ describeOutput)
-			return parseDescribe(describeOutput)
-		}
-
-		async function loop(tries: number): Promise<DescribedVersion> {
-			const ret = await describe()
-			if (ret.tag != null || tries < 1) {
-				return ret
-			} else {
-				// on the last attempt, we do a full clone
-				const cmd = tries == 1 ? ['git', 'fetch', '--unshallow', '--tags'] : ['git', 'fetch', '--deepen', '100']
-				console.log("Fetching more history ...")
-				self.runner.run(cmd)
-				return loop(tries - 1)
-			}
-		}
-
-		if (await this.runner.exists(".git/shallow")) {
-			console.log("Shallow repository detected")
-			return await loop(4)
-		} else {
-			return describe()
-		}
 	}
 }
 

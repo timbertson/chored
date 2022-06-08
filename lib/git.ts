@@ -1,6 +1,7 @@
 import { run, RunOpts, runOutput, RunResult } from './cmd.ts'
 import { notNull, merge } from './util/object.ts'
-import { DescribedVersion as BaseDescribedVersion, describeCmd, parseDescribe } from './git/describe_impl.ts'
+import { DescribedVersion as BaseDescribedVersion, describeWithAutoDeepen } from './git/describe_impl.ts'
+import runner from './git/deno_runner.ts'
 import { Version } from "./version.ts";
 export interface DescribedVersion extends BaseDescribedVersion {
 	version: Version | null
@@ -160,7 +161,10 @@ export async function amendAllChanges(options: AmendAllOptions): Promise<void> {
 	})
 }
 
-export async function describeVersion(ref: string = 'HEAD'): Promise<DescribedVersion> {
-	const base = parseDescribe(await runOutput(describeCmd(ref), { printCommand: false }))
+export interface DescribeOptions extends CommonOptions {
+	ref?: string
+}
+export async function describeVersion(opts: DescribeOptions): Promise<DescribedVersion> {
+	const base = await describeWithAutoDeepen(runner(runOpts(opts)), opts.ref ?? 'HEAD')
 	return { ...base, version: base.tag ? Version.parse(base.tag) : null }
 }
