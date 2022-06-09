@@ -104,7 +104,10 @@ export async function runResolved(entrypoint: Entrypoint, opts: RunOpts): Promis
 }
 
 function makeScopeMatcher(scope: Scope): (_: string[]) => boolean {
-	return scope.length === 0 ? _ => true : candidate => equalArrays(candidate.slice(0, scope.length), scope)
+	return scope.length === 0 ? _ => true : candidate => {
+		const commonLength = Math.min(candidate.length, scope.length)
+		return equalArrays(candidate.slice(0, commonLength), scope.slice(0, commonLength))
+	}
 }
 
 async function listFilesIn(path: string): Promise<string[]> {
