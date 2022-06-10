@@ -3,7 +3,7 @@ import { wrapperScript, bootstrapText } from '../lib/render/bootstrap.ts'
 import { workflow as ci } from './lib/ci.ts'
 import { file as Dockerfile } from './docker.ts'
 
-export default async function(_: {}): Promise<void> {
+export default async function(opts: { verbose?: boolean }): Promise<void> {
 	return render([
 		new JSONFile("example/generated.json", { generated: true }),
 		new YAMLFile("example/generated.yaml", { generated: true }),
@@ -12,6 +12,6 @@ export default async function(_: {}): Promise<void> {
 		Dockerfile,
 	], {
 		// for this repo, we pin main to the local version instead of the public version
-		wrapperScript: wrapperScript({ mainModule: './lib/main.ts' })
+		wrapperScript: wrapperScript({ mainModule: './lib/main.ts' }),
 	})
 }

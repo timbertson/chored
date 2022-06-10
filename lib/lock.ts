@@ -3,7 +3,7 @@ import { run } from './cmd.ts'
 import withTempFile from './fs/with_temp_file.ts'
 import { replaceSuffix } from './util/string.ts'
 
-export const lockPath = (config: Config = defaultConfig) => `${config.taskRoot}/.lock.json`
+export const lockPath = (config: Config = defaultConfig) => `${config.taskRoot}/lock.json`
 
 const mainModule = replaceSuffix(import.meta.url, 'lib/lock.ts', 'main.ts')
 

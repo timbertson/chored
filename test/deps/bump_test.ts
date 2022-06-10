@@ -1,11 +1,12 @@
-import { assertEquals } from './common.ts'
-import { notNull } from '../lib/util/object.ts'
-import { trimIndent } from '../lib/util/string.ts'
-import { DenoFS, FakeFS } from '../lib/fs/impl.ts'
-import { run } from '../lib/cmd.ts'
+import { assertEquals } from '../common.ts'
+import { notNull } from '../../lib/util/object.ts'
+import { DenoFS, FakeFS } from '../../lib/fs/impl.ts'
+import { run } from '../../lib/cmd.ts'
 
-import { Bumper, GithubSource, GithubSpec, ImportSpec, BumpSpec, GithubImport, _updater, Source, TestImport } from '../lib/bump.ts'
-import withTempDir from "../lib/fs/with_temp_dir.ts";
+import { Bumper } from '../../lib/deps/bump.ts'
+import { BumpSpec, Source, TestImport } from '../../lib/deps/source.ts'
+import { GithubSource, GithubSpec, GithubImport } from '../../lib/deps/github.ts'
+import withTempDir from "../../lib/fs/with_temp_dir.ts";
 
 const url = (r: string, p?: { spec?: string, repo?: string, path?: string }) => {
 	const base = `https://raw.githubusercontent.com/${p?.repo ?? 'timbertson/chored'}/${r}/${p?.path ?? 'lib/README.md'}`
@@ -40,16 +41,13 @@ Deno.test('bump parseGH with override', async (t) => {
 	const base = url('SHA')
 	const parsed = notNull(parseGH(base)?.spec)
 	await t.step('name mismatch', () => {
-		parsed.adaptIfMatch({ sourceName: 'other', spec: 'foo' })
-		assertEquals(parsed.ref, null)
+		assertEquals(parsed.matchesSpec({ sourceName: 'other', spec: 'foo' }), false)
 	})
 	await t.step('short name', () => {
-		parsed.adaptIfMatch({ sourceName: 'chored', spec: 'foo' })
-		assertEquals(parsed.ref, 'foo')
+		assertEquals(parsed.matchesSpec({ sourceName: 'chored', spec: 'foo' }), true)
 	})
 	await t.step('full name', () => {
-		parsed.adaptIfMatch({ sourceName: 'timbertson/chored', spec: 'bar' })
-		assertEquals(parsed.ref, 'bar')
+		assertEquals(parsed.matchesSpec({ sourceName: 'timbertson/chored', spec: 'bar' }), true)
 	})
 })
 
@@ -71,8 +69,8 @@ Deno.test('bump resolve branch', async () => {
 	await run(['git', 'branch', '--force', spec, testSha], { printCommand: false })
 	
 	const update = notNull(await source.spec.resolveFrom('.', false))
-	assertEquals(update.apply(source.import), url(testSha, { spec }))
-	assertEquals(update.apply({ ... source.import, path: 'Dockerfile' }), url(testSha, { spec, path: 'Dockerfile' }))
+	assertEquals(update(source.import), url(testSha, { spec }))
+	assertEquals(update({ ... source.import, path: 'Dockerfile' }), url(testSha, { spec, path: 'Dockerfile' }))
 })
 
 Deno.test('bump resolve wildcard tag', async () => {
@@ -81,7 +79,7 @@ Deno.test('bump resolve wildcard tag', async () => {
 
 	await fetchTestCommit()
 	const update = notNull(await source.spec.resolveFrom('.', false))
-	assertEquals(update.apply(source.import), url(testShaTag, { spec }))
+	assertEquals(update(source.import), url(testShaTag, { spec }))
 })
 
 Deno.test('GithubSource cache identity only cares about repo and spec', () => {
@@ -155,45 +153,6 @@ Deno.test('bumpFile', async () => {
 	assertEquals(await fs.readTextFile('b'), bContents)
 })
 
-Deno.test('bump import map', async () => {
-	const fs = new FakeFS()
-	const bumper = new Bumper({
-		sources: [ GithubSource ],
-		opts: {
-			// verbose: true
-		}, fs })
-	
-	function addUpdater(importSpec: ImportSpec<GithubImport>) {
-		bumper.cache[importSpec.spec.identity] = Promise.resolve(_updater<GithubImport>(
-			importSpec.spec.origin,
-			(imp: GithubImport) => GithubSpec.show({ ...imp, version: importSpec.import.version })
-		))
-	}
-	
-	// since we don't know what ref a given mapping corresponded to, we
-	// include the value for each known key. Misses don't cost us anything :shrug:
-	addUpdater(parseGH(url('v1.2.3', { spec: 'v1.*' })))
-	addUpdater(parseGH(url('v2.0.0')))
-	addUpdater(parseGH(url('HEAD', { repo: 'foo/bar' })))
-	
-	const imports: { [index: string]: string } = {}
-	const path = 'index.json'
-	imports[url('v1.2.0', { path: ''})] = '../chored'
-	imports[url('abcd1234', { repo: 'foo/bar', path: ''})] = '../bar'
-	imports['fs'] = 'nodejs:fs'
-	await fs.writeTextFile(path, JSON.stringify({ imports }))
-	await bumper.bumpImportMap(path)
-	assertEquals(await fs.readTextFile(path), trimIndent(`
-	{
-	  "imports": {
-	    "fs": "nodejs:fs",
-	    "https://raw.githubusercontent.com/foo/bar/HEAD/": "../bar",
-	    "https://raw.githubusercontent.com/timbertson/chored/v1.2.3/": "../chored",
-	    "https://raw.githubusercontent.com/timbertson/chored/v2.0.0/": "../chored"
-	  }
-	}`))
-})
-
 Deno.test('bump walk', () => withTempDir({}, async (dir) => {
 	await DenoFS.mkdirp(`${dir}/a/b/c`)
 	await DenoFS.writeTextFile(`${dir}/main.ts`, `
@@ -208,11 +167,12 @@ Deno.test('bump walk', () => withTempDir({}, async (dir) => {
 			return {
 				import: { url },
 				spec: {
-					origin: url,
 					identity: url,
-					adaptIfMatch(spec: BumpSpec) {},
+					root(imp: TestImport) { return "" },
+					matchesSpec(spec: BumpSpec) { return false },
+					setSpec(spec: BumpSpec) {},
 					resolve(verbose: boolean) {
-						return Promise.resolve(_updater<TestImport>(url, (imp: TestImport) => imp.url + "-new"))
+						return Promise.resolve((imp: TestImport) => imp.url + "-new")
 					}
 				}
 			}
@@ -220,7 +180,6 @@ Deno.test('bump walk', () => withTempDir({}, async (dir) => {
 	}
 
 	const changes = await Bumper._bump([dir], { verbose: false }, [ testSource ])
-	assertEquals(changes, 2)
 	
 	assertEquals(await DenoFS.readTextFile(`${dir}/main.ts`), `
 		export * from 'https://example.com/v1/main.ts-new'
@@ -228,5 +187,7 @@ Deno.test('bump walk', () => withTempDir({}, async (dir) => {
 	assertEquals(await DenoFS.readTextFile(`${dir}/a/b/c/nested.ts`), `
 		export * from 'https://example.com/v1/lib/nested.ts-new'
  `.trim())
+
+	assertEquals(changes, 2)
 	
 }))

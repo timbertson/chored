@@ -9,9 +9,11 @@ export type { File }
 type JSObj = { [index: string]: any }
 
 export class JSONFile extends BaseFile<JSObj> implements File {
+	includeMarker: boolean = true
+
 	serialize(): string {
-		let vs = { '//': MARKER, ...this.value }
-		return JSON.stringify(vs, null, 2)
+		const obj = this.includeMarker ? { '//': MARKER, ...this.value } : this.value
+		return JSON.stringify(obj, null, 2)
 	}
 }
 

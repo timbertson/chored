@@ -53,10 +53,6 @@ _main "$@"
 export function wrapperText(opts: Options) {
 	return makeScript(`
 	here="$PWD"
-	LOCKFILE="choredefs/.lock.json"
-	if [ -e "$LOCKFILE" ]; then
-		DENO_ARGV+=(--lock="$LOCKFILE")
-	fi
 
 	if [ -n "$\{DENO_ARGS:-}" ]; then
 		DENO_ARGV+=($DENO_ARGS)
@@ -68,8 +64,19 @@ export function wrapperText(opts: Options) {
 	fi
 
 	CHORED_MAIN_FALLBACK='${opts.mainModule ?? mainModule}'
+	CHORED_MAIN="\${CHORED_MAIN:-$CHORED_MAIN_FALLBACK}"
 
-	exec "$DENO" run "\${DENO_ARGV[@]}" "\${CHORED_MAIN:-$CHORED_MAIN_FALLBACK}" "$@"
+	if [ "\${1:-}" = "--local" ]; then
+		shift
+		DENO_ARGV+=(--import-map <("$DENO" run "\${DENO_ARGV[@]}" "$CHORED_MAIN" __local))
+	else
+		LOCKFILE="choredefs/lock.json"
+		if [ -e "$LOCKFILE" ]; then
+			DENO_ARGV+=(--lock="$LOCKFILE")
+		fi
+	fi
+
+	exec "$DENO" run "\${DENO_ARGV[@]}" "$CHORED_MAIN" "$@"
 `)
 }
 
