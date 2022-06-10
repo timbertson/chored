@@ -3,13 +3,11 @@ import { FS, DenoFS, FSUtil } from './fs/impl.ts'
 import { File, GitAttributes, GENERATED_ATTR, writeTo } from './render/file_internal.ts'
 export * from './render/file.ts'
 import { wrapperScript } from './render/bootstrap.ts'
-import { file as localDepsFile, Options as LocalOptions } from "./deps/local.ts"
 export { wrapperScript } from './render/bootstrap.ts'
 
 export type Options = {
 	gitattributesExtra?: Array<string>,
 	wrapperScript?: boolean | File,
-	localDeps?: LocalOptions
 }
 
 export async function render(files: Array<File>, options?: Options, fsOverride?: FS): Promise<void> {
@@ -22,9 +20,6 @@ export async function render(files: Array<File>, options?: Options, fsOverride?:
 			: options.wrapperScript
 		)
 		files.push(script)
-	}
-	if (options.localDeps != null) {
-		files.push(await localDepsFile(options.localDeps))
 	}
 
 	const allPaths = files.map(f =>f.path)

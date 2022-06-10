@@ -7,18 +7,17 @@ Deno.test('local dependency map', async (t) => withTempDir({}, async (dir) => {
 	const cwd = Deno.cwd()
 	const choredefs = `${dir}/choredefs`
 	await DenoFS.mkdir(choredefs)
-	await DenoFS.writeTextFile(`${choredefs}/render.ts`, `
+	await DenoFS.writeTextFile(`${choredefs}/index.ts`, `
 		import { walk } from 'https://raw.githubusercontent.com/denoland/deno_std/0.133.0/fs/walk.ts#0.133.*'
 		import { sort } from 'https://raw.githubusercontent.com/timbertson/chored/8dadebec07917f983d01c7c5cbc5c8dcdcfb42b0/lib/util/collection.ts#main'
 		import { render } from '${cwd}/lib/render.ts'
+		import { importMap, Options } from '${cwd}/lib/localImportMap.ts'
 		
-		export default async function(opts: {}) {
-			await render([], { localDeps: {
-				sources: {
-					chored: 'chored-local',
-					deno_std: 'std-local'
-				}
-			}})
+		export async function localImportMap(opts: Options) {
+			await importMap(opts, {
+				chored: 'chored-local',
+				deno_std: 'std-local'
+			})
 		}
 
 		export function printLocal(opts: {}) {
@@ -34,24 +33,14 @@ Deno.test('local dependency map', async (t) => withTempDir({}, async (dir) => {
 		}
 	`)
 
-	const imports = {
-		"https://raw.githubusercontent.com/denoland/deno_std/0.133.0/": "std-local/",
-		"https://raw.githubusercontent.com/timbertson/chored/8dadebec07917f983d01c7c5cbc5c8dcdcfb42b0/": "chored-local/",
-	}
 	const runOpts = {
 		env: { CHORED_MAIN: cwd + '/lib/main.ts' },
 		cwd: dir
 	}
 
-	await t.step('generates local-deps.json', async () => {
-		await run([`${cwd}/chored`, 'render'], runOpts)
-		const json = JSON.parse(await DenoFS.readTextFile(`${choredefs}/local-deps.json`))
-		assertEquals(json, { imports })
-	})
-
-	await t.step('filters dependencies to extant paths', async () => {
+	await t.step('generates a dynamic, local import map', async () => {
 		// we don't have a `std` dir, so it should be filtered out
-		const output = await runOutput([`${Deno.cwd()}/chored`, '--local', 'render', 'printLocal'], runOpts)
+		const output = await runOutput([`${Deno.cwd()}/chored`, '--local', 'printLocal'], runOpts)
 		assertEquals(output, 'FAKE SORT!\nfunction')
 	})
 }))

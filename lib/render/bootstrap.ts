@@ -64,7 +64,9 @@ export function wrapperText(opts: Options) {
 
 	if [ "\${1:-}" = "--local" ]; then
 		shift
-		DENO_ARGV+=(--import-map <("$DENO" run "\${DENO_ARGV[@]}" "$CHORED_MAIN" __local))
+		IMPORT_MAP_URL="$("$DENO" run "\${DENO_ARGV[@]}" "$CHORED_MAIN" localImportMap)"
+		[ $? -eq 0 ]
+		DENO_ARGV+=(--import-map "$IMPORT_MAP_URL")
 	else
 		LOCKFILE="choredefs/lock.json"
 		if [ -e "$LOCKFILE" ]; then

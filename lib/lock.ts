@@ -5,7 +5,7 @@ import { replaceSuffix } from './util/string.ts'
 
 export const lockPath = (config: Config = defaultConfig) => `${config.taskRoot}/lock.json`
 
-const mainModule = replaceSuffix(import.meta.url, 'lib/lock.ts', 'main.ts')
+const mainModule = replaceSuffix(import.meta.url, 'lib/lock.ts', 'lib/main.ts')
 
 async function lockModules(paths: Array<string>, config: Config = defaultConfig, lockPathOverride?: string): Promise<void> {
 	const defaultLockPath = lockPath(config)

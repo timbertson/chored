@@ -1,14 +1,13 @@
 import { gray, red } from './fmt/colors.ts'
 import { notNull } from './util/object.ts'
 import { Config, defaultConfig } from './main/config.ts'
-import { DenoFS } from './fs/impl.ts'
 
 import { Resolver, Code } from './main/entrypoint.ts'
 
 const bools: { [index: string]: boolean } = { true: true, false: false }
 
 interface Options {
-	action: 'run' | 'list' | 'help' | 'local'
+	action: 'run' | 'list' | 'help'
 	main: string[]
 	opts: { [index: string]: Code }
 }
@@ -36,15 +35,13 @@ export function parseArgs(args: Array<string>): Options {
 	
 	let main = []
 	let opts: { [index: string]: Code } = {}
-	let action: 'run' | 'list' | 'help' | 'local' = 'run'
+	let action: 'run' | 'list' | 'help' = 'run'
 	while(true) {
 		let arg = args.shift()
 		if (arg == null) {
 			break
 		}
-		if (arg == '__local') {
-			action = 'local'
-		} else if (arg == '--string' || arg == '-s') {
+		if (arg == '--string' || arg == '-s') {
 			let key = shift()
 			opts[key] = Code.value(shift())
 		} else if (arg == '--bool' || arg == '-b') {
@@ -106,22 +103,6 @@ export async function main(config: Config, args: Array<string>): Promise<void> {
 		await resolver.listEntrypoints(main)
 	} else if (action == 'help') {
 		await resolver.printHelp(main)
-	} else if (action == 'local') {
-		// This is invoked from the `chored` bash script, it produces a trimmed import map
-		const input = JSON.parse(await DenoFS.readTextFile(`${config.taskRoot}/local-deps.json`))
-		const imports: { [k: string]: string } = input.imports
-		const filtered: { [k: string]: string } = {}
-		const cwd = Deno.cwd() + '/'
-
-		for (const [url, path] of Object.entries(imports)) {
-			if (await (DenoFS.exists(path))) {
-				filtered[url] = cwd + path
-			} else {
-				console.warn(`[local] path omitted: ${path}`)
-			}
-		}
-		input.imports = filtered
-		console.log(JSON.stringify(input, null, 2))
 	} else {
 		try {
 			await resolver.run(main, opts)
