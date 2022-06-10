@@ -37,10 +37,6 @@ _main() {
 
 	here="$PWD"
 
-	if [ -n "${DENO_ARGS:-}" ]; then
-		DENO_ARGV+=($DENO_ARGS)
-	fi
-
 	if [ "${1:-}" = "--deno" ]; then
 		shift
 		exec "$DENO" "$@"
@@ -57,6 +53,10 @@ _main() {
 		if [ -e "$LOCKFILE" ]; then
 			DENO_ARGV+=(--lock="$LOCKFILE")
 		fi
+	fi
+
+	if [ -n "${DENO_ARGS:-}" ]; then
+		DENO_ARGV+=($DENO_ARGS)
 	fi
 
 	exec "$DENO" run "${DENO_ARGV[@]}" "$CHORED_MAIN" "$@"

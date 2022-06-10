@@ -54,10 +54,6 @@ export function wrapperText(opts: Options) {
 	return makeScript(`
 	here="$PWD"
 
-	if [ -n "$\{DENO_ARGS:-}" ]; then
-		DENO_ARGV+=($DENO_ARGS)
-	fi
-
 	if [ "\${1:-}" = "--deno" ]; then
 		shift
 		exec "$DENO" "$@"
@@ -74,6 +70,10 @@ export function wrapperText(opts: Options) {
 		if [ -e "$LOCKFILE" ]; then
 			DENO_ARGV+=(--lock="$LOCKFILE")
 		fi
+	fi
+
+	if [ -n "$\{DENO_ARGS:-}" ]; then
+		DENO_ARGV+=($DENO_ARGS)
 	fi
 
 	exec "$DENO" run "\${DENO_ARGV[@]}" "$CHORED_MAIN" "$@"
