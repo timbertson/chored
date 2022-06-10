@@ -21,9 +21,11 @@ export interface Options {
 	handler?: Handler,
 }
 
+const commonGitOpts: Git.CommonOptions = { identity: Git.githubActionsBot }
+
 export async function selfUpdate(opts: Options): Promise<boolean> {
 	const handler = opts.handler || noopHandler
-	const gitOpts = { gitDir: opts.gitDir, printDiff: false }
+	const gitOpts: Git.RequireCleanOptions = { ... commonGitOpts, gitDir: opts.gitDir, printDiff: false }
 	await Git.requireClean(gitOpts)
 	
 	const hasGitChanges = async () => {
@@ -96,7 +98,7 @@ export const pushHandler = _makePushHandler(realEnv)
 export function _makePullRequestHandler(impl: {
 	silenceErrors: boolean,
 	pushHandler: MakePushHandler,
-	runCommand: (cmd: string[]) => Promise<void>
+	commitAll: (opts: Git.CommitAllOptions) => Promise<void>,
 	makeClient: (token: string) => GH.GithubClient,
 }): (opts: PullRequestOptions) => Promise<Handler> {
 	return async function pullRequestHandler(opts: PullRequestOptions): Promise<Handler> {
@@ -138,7 +140,12 @@ export function _makePullRequestHandler(impl: {
 					}
 
 					// ensure there's at least one commit
-					await impl.runCommand(['git', 'commit', '--allow-empty', '--message', 'empty commit'])
+					await impl.commitAll({
+						... commonGitOpts,
+						allowEmpty: true,
+						includeUntracked: false,
+						commitMessage: 'empty commit',
+					})
 					await push.onChange()
 
 					await client.createOrUpdatePullRequest({
@@ -165,7 +172,7 @@ export function _makePullRequestHandler(impl: {
 export const pullRequestHandler = _makePullRequestHandler({
 	silenceErrors: false,
 	pushHandler,
-	runCommand: realEnv.runCommand,
+	commitAll: Git.commitAllChanges,
 	makeClient: GH.Client,
 })
 

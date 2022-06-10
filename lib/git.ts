@@ -14,6 +14,8 @@ export interface Identity {
 
 export const nobody: Identity = { name: 'nobody', email: 'nobody@localhost' }
 
+export const githubActionsBot: Identity = { name: 'Github Actions', email: 'action@github.com' }
+
 export interface CommonOptions {
 	gitDir?: string,
 	identity?: Identity,
@@ -130,7 +132,8 @@ export async function branchName(options?: CommonOptions): Promise<string | null
 
 export interface CommitAllOptions extends CommonOptions {
 	includeUntracked: boolean
-	commitMessage: string,
+	commitMessage: string
+	allowEmpty?: boolean
 }
 
 export interface AmendAllOptions extends CommonOptions {
@@ -145,7 +148,11 @@ export async function commitAllChanges(options: CommitAllOptions): Promise<void>
 	if (options.includeUntracked) {
 		await addAll(options)
 	}
-	await run(['git', 'commit', '--all', '--message', options.commitMessage], {
+	const cmd = ['git', 'commit', '--all', '--message', options.commitMessage]
+	if (options.allowEmpty === true) {
+		cmd.push('--allow-empty')
+	}
+	await run(cmd, {
 		...runOpts(options),
 		printCommand: true
 	})

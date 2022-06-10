@@ -66,6 +66,7 @@ Deno.test('self update noop', () => Context.run(async (ctx: Context) => {
 class GithubStub {
 	commands: Array<string[]> = []
 	pullRequests: Array<GH.CreateOrUpdatePROptions> = []
+	commits: Array<Git.CommitAllOptions> = []
 	
 	runCommand(cmd: string[]) {
 		this.commands.push(cmd)
@@ -77,9 +78,13 @@ class GithubStub {
 	}
 
 	makePullRequest() {
+		const self = this
 		return _makePullRequestHandler({
 			silenceErrors: true,
-			runCommand: this.runCommand.bind(this),
+			commitAll: (opts: Git.CommitAllOptions) => {
+				self.commits.push(opts)
+				return Promise.resolve()
+			},
 			makeClient: (token: string) => {
 				const client = GH.Client(token)
 				const self = this
@@ -143,18 +148,20 @@ Deno.test('pull request handler updates PR on error', async () => {
 	assertEquals(stub.commands, [
 		[
 			"git",
-			"commit",
-			"--allow-empty",
-			"--message",
-			"empty commit",
-		],
-		[
-			"git",
 			"push",
 			"--force",
 			"origin",
 			"HEAD:refs/heads/feature-branch",
 		],
+	])
+
+	assertEquals(stub.commits, [
+		{
+			allowEmpty: true,
+			commitMessage: "empty commit",
+			identity: Git.githubActionsBot,
+			includeUntracked: false,
+		},
 	])
 })
 

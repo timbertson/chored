@@ -8,7 +8,7 @@ export function filterNull<T>(items: Array<T|null>): T[] {
 }
 
 export function sortBy<T>(items: T[], key: (t: T) => number, reverse?: boolean): T[] {
-	return sortByCmp(items, (a:number, b:number) => a - b, key)
+	return sortByCmp(items, (a:number, b:number) => a - b, key, reverse)
 }
 
 export function sortByCmp<T, K>(items: T[], cmp: (a:K, b:K) => number, key: (t: T) => K, reverse?: boolean): T[] {
