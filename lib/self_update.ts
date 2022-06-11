@@ -53,7 +53,7 @@ export interface PushOptions {
 }
 
 interface CommonPullRequestOptions extends PushOptions {
-	baseBranch: string,
+	baseBranch?: string | null,
 	branchName: string,
 	prTitle: string
 	prBody: string
@@ -104,10 +104,15 @@ export function _makePullRequestHandler(impl: {
 		// validate token eagerly
 		const _: GH.UserIdentity = await client.execute(GH.getAuthenticatedUser, null)
 
+		const baseBranch = opts.baseBranch ?? await client.execute(GH.getDefaultBranchName, {
+			owner: repo.owner,
+			repo: repo.name,
+		})
+
 		const prOpts = {
 			body: opts.prBody,
 			title: opts.prTitle,
-			baseBranch: opts.baseBranch,
+			baseBranch,
 			branchName: opts.branchName,
 			owner: repo.owner,
 			repo: repo.name,

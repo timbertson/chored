@@ -47,7 +47,6 @@ export async function pr(opts: {
 	githubToken: string
 }) {
 	await runWith(await Update.pullRequestHandler({
-		baseBranch: 'main',
 		branchName: 'self-update',
 		githubToken: opts.githubToken,
 		prTitle: '[bot] update dependencies',

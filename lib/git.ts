@@ -41,8 +41,8 @@ export function identityEnv(identity: Identity): { [k: string]: string } {
 	return {
 		GIT_AUTHOR_NAME: identity.name,
 		GIT_AUTHOR_EMAIL: identity.email,
-		GIT_COMITTER_NAME: identity.name,
-		GIT_COMITTER_EMAIL: identity.email,
+		GIT_COMMITTER_NAME: identity.name,
+		GIT_COMMITTER_EMAIL: identity.email,
 	}
 }
 

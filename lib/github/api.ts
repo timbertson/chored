@@ -49,9 +49,12 @@ export interface Identity {
 	id: string
 }
 
-export interface FindPRParams {
+export interface FindRepositoryParams {
 	owner: string,
 	repo: string,
+}
+
+export interface FindPRParams extends FindRepositoryParams {
 	branchName: string
 }
 
@@ -175,4 +178,21 @@ export const getAuthenticatedUser: Query<null, UserIdentity> = {
 			}
 		}
 	`
+}
+
+export const getDefaultBranchName: Query<FindRepositoryParams, string> = {
+	extract: (obj: any) => obj.repository.defaultBranchRef.name as string,
+	queryText: `
+		query getDefaultBranchName($owner: String!, $repo: String!) {
+			repository(owner: $owner, name: $repo) {
+				defaultBranchRef {
+					name
+				}
+			}
+		}
+	`
+}
+
+export async function test(_: {}) {
+	console.log(await defaultClient().execute(getDefaultBranchName, { owner: 'timbertson', repo: 'sbt-strict-scope' }))
 }
