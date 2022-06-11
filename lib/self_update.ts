@@ -28,26 +28,21 @@ export async function selfUpdate(opts: Options): Promise<boolean> {
 	const gitOpts: Git.RequireCleanOptions = { ... commonGitOpts, gitDir: opts.gitDir, printDiff: false }
 	await Git.requireClean(gitOpts)
 	
-	const hasGitChanges = async () => {
-		const gitChanges = await Git.uncommittedChanges(gitOpts)
-		if (gitChanges == null) {
-			console.log('No changes detected after update')
-		}
-		return gitChanges != null
-	}
-
 	await handler.wrap(() => opts.update())
 
-	const changed = await hasGitChanges()
-	if (changed) {
+	const gitChanges = await Git.uncommittedChanges(gitOpts)
+	const hasChanges = gitChanges != null
+	if (hasChanges) {
 		await Git.commitAllChanges({
 			...gitOpts,
 			includeUntracked: true,
 			commitMessage: opts.commitMessage,
 		})
 		await handler.onChange()
+	} else {
+		console.log('No changes detected after update')
 	}
-	return changed
+	return hasChanges
 }
 
 
@@ -180,7 +175,7 @@ export interface PartialPullRequestOptions extends CommonPullRequestOptions {
 	githubToken?: string
 }
 
-export type Mode = 'noop'|'pr'|'push'
+export type Mode = 'commit'|'pr'|'push'
 
 export async function standardSelfUpdate(opts: Options & {
 	pr: PartialPullRequestOptions,

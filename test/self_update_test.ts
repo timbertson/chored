@@ -40,7 +40,7 @@ Deno.test('self update commits changes and invokes handler', () => Context.run(a
 	const handler = makeHandler()
 	assertEquals(await selfUpdate({
 		commitMessage,
-		update:() => ctx.write('a', 'updated a'),
+		update: async () => ctx.write('a', 'updated a'),
 		handler,
 		gitDir: ctx.dir,
 	}), true)
