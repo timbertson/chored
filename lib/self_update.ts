@@ -152,7 +152,7 @@ export function _makePullRequestHandler(impl: {
 						...prOpts,
 						title: prOpts.title + ' :no_entry_sign:',
 						body: (
-							`# Error:\n\nAn error occurred while generating this pull request: \`${error.message}\`\n\n`
+							`# Error:\n\nAn error occurred while generating this pull request:\n\`\`\`\n${error.message}\n\`\`\`\n\n`
 							+ 'You may need to re-run this action and fix the errors manually. This pull request is created for visibility, '
 							+ 'it may not have any useful changes.\n\n---\n\n'
 							+ prOpts.body

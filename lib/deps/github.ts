@@ -32,7 +32,7 @@ export class GithubSpec implements Spec<GithubImport> {
 
 		// TODO: use https if there's known creds, otherwise ssh?
 		// TODO: reuse deno's credentials system for transparently accessing private repos
-		this.repoURL = `git@github.com:${imp.owner}/${imp.repo}.git`
+		this.repoURL = `https://github.com/${imp.owner}/${imp.repo}.git`
 	}
 
 	static show(imp: GithubImport): string {
