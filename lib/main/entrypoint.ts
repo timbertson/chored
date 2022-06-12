@@ -232,13 +232,27 @@ export class Resolver {
 		const scope = main.slice(0, 1) as Scope
 		const matchesScope = makeScopeMatcher(scope)
 		const log: Array<string | string[]> = ['']
+		const niceModule = (() => {
+			const cwd = Deno.cwd() + '/'
+			return (e: Entrypoint) => {
+				let m = e.module
+				m = m.replace(/^file:\/\//, '')
+				if (m.startsWith(cwd)) {
+					m = m.substring(cwd.length)
+				}
+				return m
+			}
+		})()
 		for await (const source of this.entrypointSources(scope)) {
 			if (!matchesScope(source.scope)) {
 				continue
 			}
 			const entrypoints = (await source.entrypoints()).filter(e => matchesScope(e.id))
 			if (entrypoints.length > 0) {
-				log.push(`\n[ from ${entrypoints[0].module} ]:`)
+				// don't bother printing modules matching their filename
+				if (!entrypoints.every(e => e.module.endsWith(`/${e.id[0]}.ts`))) {
+					log.push(`\n   (${niceModule(entrypoints[0])})`)
+				}
 			}
 
 			for (const entrypoint of entrypoints) {
