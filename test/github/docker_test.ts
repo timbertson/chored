@@ -2,6 +2,7 @@ import { assertEquals } from "../common.ts";
 
 import { _buildOptions, GithubEnv } from "../../lib/github/docker.ts";
 import * as Git from "../../lib/git.ts"
+import { notNull } from "../../lib/util/object.ts";
 
 const sha = 'abcd123'
 
@@ -21,7 +22,7 @@ Deno.test('buildOptions dev', async () => {
 
 	assertEquals(await _buildOptions(devEnv, {}),
 		{
-			cacheFrom: [ "latest", await Git.branchName() ],
+			cacheFrom: [ "latest", notNull(await Git.branchName()) ],
 			push: false,
 			tags: [ "development" ],
 		}

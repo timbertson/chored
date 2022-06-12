@@ -22,8 +22,8 @@ Deno.test('VersionTemplate', () => {
 	assertEquals(VersionTemplate.parse('1').isFree(0), false)
 	assertEquals(VersionTemplate.parse('1').isFree(1), true)
 
-	assertThrows(() => VersionTemplate.parse('1.x.2'), undefined, 'Invalid version template')
-	assertThrows(() => VersionTemplate.parse('1.x.-'), undefined, 'Invalid version template')
+	assertThrows(() => VersionTemplate.parse('1.x.2'), 'Invalid version template')
+	assertThrows(() => VersionTemplate.parse('1.x.-'), 'Invalid version template')
 })
 
 Deno.test('nextVersion', () => {
@@ -46,9 +46,9 @@ Deno.test('nextVersion', () => {
 
 	assertEquals(n('x.x', '0.2', { component: 'major' }), '1.0')
 	assertEquals(n('x.0', '0.2', { defaultComponent: 'minor', component: null }), '1.0')
-	assertThrows(() => n('1.x', '0.2', { component: 'major' }), undefined,
+	assertThrows(() => n('1.x', '0.2', { component: 'major' }),
 		'Requested component (major) is incompatible with version template: 1.x')
-	assertThrows(() => n('1.x.0', '0.2', { component: 'patch' }), undefined,
+	assertThrows(() => n('1.x.0', '0.2', { component: 'patch' }),
 		'Requested component (patch) is incompatible with version template: 1.x.0')
 })
 

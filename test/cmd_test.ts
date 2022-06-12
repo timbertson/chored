@@ -5,7 +5,7 @@ const noPrint = { printCommand: false }
 
 Deno.test("cmd fails on nonzero stautus", async () => {
 	await run(['true'], noPrint)
-	await assertRejects(() => run(['false'], noPrint), undefined, "Command `false` failed with status 1")
+	await assertRejects(() => run(['false'], noPrint), "Command `false` failed with status 1")
 })
 
 Deno.test("cmd runTest", async () => {

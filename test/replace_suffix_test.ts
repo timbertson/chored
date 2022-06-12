@@ -3,5 +3,5 @@ import { replaceSuffix } from '../lib/util/string.ts'
 
 Deno.test('replaceSuffix', () => {
 	assertEquals(replaceSuffix('abcdefgh', 'gh', ' (etc)'), 'abcdef (etc)')
-	assertThrows(() => replaceSuffix('abc', 'foo', 'bar'), undefined, 'abc does not end with foo')
+	assertThrows(() => replaceSuffix('abc', 'foo', 'bar'), 'abc does not end with foo')
 })

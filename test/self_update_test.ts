@@ -17,7 +17,7 @@ Deno.test('self update rejects uncommitted changes', () => Context.run(async (ct
 		commitMessage,
 		update:() => fail('update invoked'),
 		gitDir: ctx.dir,
-	}), undefined, 'ERROR: clean workspace required')
+	}), 'ERROR: clean workspace required')
 }))
 
 function makeHandler() {
@@ -108,7 +108,7 @@ Deno.test('push handler', async () => {
 
 	// propagaes errors
 	const e = new Error("test failure")
-	await assertRejects(() => handler.wrap(() => (Promise.reject(e) as Promise<void>)), undefined, e.message)
+	await assertRejects(() => handler.wrap(() => (Promise.reject(e) as Promise<void>)), e.message)
 	
 	await handler.onChange()
 	assertEquals(stub.commands, [
@@ -138,10 +138,10 @@ Deno.test('pull request handler updates PR on error', async () => {
 	const handler = await stub.makePullRequest()(prOptions)
 
 	const e = new Error("test failure")
-	await assertRejects(() => handler.wrap(() => (Promise.reject(e) as Promise<void>)), undefined, e.message)
+	await assertRejects(() => handler.wrap(() => (Promise.reject(e) as Promise<void>)), Error, e.message)
 	
 	assertMatch(stub.pullRequests.map(x => x.body)[0],
-		/# Error:\n\nAn error occurred while generating this pull request: `test failure`\n\n/
+		/# Error:\n\nAn error occurred while generating this pull request:\n```\ntest failure\n```\n\n/
 	)
 	assertMatch(stub.pullRequests[0].body, /\n\nbody/)
 

@@ -15,14 +15,14 @@ Deno.test('git unclean detection', () => Context.run(async (ctx: Context) => {
 		runCount++
 		return ctx.write('a', 'a updated')
 	}
-	await assertRejects(() => git.requireCleanAround(ctx.gitOpts, action), undefined, 'ERROR: clean workspace required after action')
+	await assertRejects(() => git.requireCleanAround(ctx.gitOpts, action), 'ERROR: clean workspace required after action')
 	assertEquals(runCount, 1)
 
-	await assertRejects(() => git.requireCleanAround(ctx.gitOpts, action), undefined, 'ERROR: clean workspace required before action')
+	await assertRejects(() => git.requireCleanAround(ctx.gitOpts, action), 'ERROR: clean workspace required before action')
 	// shouldn't run again
 	assertEquals(runCount, 1)
 
-	await assertRejects(() => git.requireClean(ctx.gitOpts), undefined, 'ERROR: clean workspace required')
+	await assertRejects(() => git.requireClean(ctx.gitOpts), 'ERROR: clean workspace required')
 	assertMatch(notNull(await git.uncommittedChanges(ctx.gitOpts)), /-a initial\n\+a updated/m)
 	
 	await git.addAll(ctx.gitOpts)

@@ -156,7 +156,7 @@ export class Resolver {
 		this.config = config
 	}
 
-	async run(main: Array<string>, opts: RunOpts): Promise<void> {
+	async run(main: Array<string>, opts: RunOpts): Promise<any> {
 		let entrypoint = await this.resolveEntrypoint(main)
 		return runResolved(nonNullEntrypoint(main, entrypoint), opts)
 	}
