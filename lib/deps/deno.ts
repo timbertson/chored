@@ -1,6 +1,6 @@
 // inspiration: https://deno.land/x/dmm@v2.1.0
 // https://deno.land/x/dmm@v2.1.0/src/services/deno_service.ts
-import { assertEquals } from "https://deno.land/std@0.133.0/testing/asserts.ts"
+import { assertEquals } from "https://deno.land/std@0.143.0/testing/asserts.ts"
 
 import { notNull } from "../util/object.ts";
 import { BumpSpec, ImportSpec, ImportUtil, OverrideFn, Spec, Updater } from "./source.ts";

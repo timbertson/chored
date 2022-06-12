@@ -1,4 +1,4 @@
-import { readLines } from "https://deno.land/std@0.133.0/io/buffer.ts"
+import { readLines } from "https://deno.land/std@0.143.0/io/buffer.ts"
 
 import { notNull } from './util/object.ts'
 

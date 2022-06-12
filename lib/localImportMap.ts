@@ -3,7 +3,7 @@ import { defaultOptions, defaultSources, Bumper } from './deps/bump.ts'
 import { BaseImport, ImportUtil } from './deps/source.ts'
 import { computeLock } from "./lock.ts";
 import { DenoFS } from "./fs/impl.ts";
-import { encode as b64Url } from 'https://deno.land/std@0.133.0/encoding/base64url.ts'
+import { encode as b64Url } from 'https://deno.land/std@0.143.0/encoding/base64url.ts'
 import { trimIndent } from "./util/string.ts";
 
 type KV = { [index: string]: string }
