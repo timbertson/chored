@@ -1,4 +1,4 @@
-import { run, runOutput } from "../../lib/cmd.ts";
+import { runOutput } from "../../lib/cmd.ts";
 import { DenoFS } from "../../lib/fs/impl.ts";
 import withTempDir from '../../lib/fs/with_temp_dir.ts'
 import { assertEquals } from "../common.ts";
@@ -9,7 +9,7 @@ Deno.test('local dependency map', async (t) => withTempDir({}, async (dir) => {
 	await DenoFS.mkdir(choredefs)
 	await DenoFS.writeTextFile(`${choredefs}/index.ts`, `
 		import { walk } from 'https://raw.githubusercontent.com/denoland/deno_std/0.133.0/fs/walk.ts#0.133.*'
-		import { sort } from 'https://raw.githubusercontent.com/timbertson/chored/8dadebec07917f983d01c7c5cbc5c8dcdcfb42b0/lib/util/collection.ts#main'
+		import { sort } from 'https://raw.githubusercontent.com/timbertson/chored/8dadebec07917f983d01c7c5cbc5c8dcdcfb42b0/lib/util/collection.ts#8dadebec07917f983d01c7c5cbc5c8dcdcfb42b0'
 		import { render } from '${cwd}/lib/render.ts'
 		import { importMap, Options } from '${cwd}/lib/localImportMap.ts'
 		

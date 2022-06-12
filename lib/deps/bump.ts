@@ -1,8 +1,9 @@
 import { merge } from '../util/object.ts'
 import { FS, DenoFS } from '../fs/impl.ts';
 import { walk } from '../walk.ts'
-import { AnyImportSpec, AnySource, BumpSpec, Updater } from './source.ts'
+import { AnyImportSpec, AnySource, BaseImport, BumpSpec, makeOverrideFn, OverrideFn, Updater } from './source.ts'
 import { GithubSource } from './github.ts'
+import { DenoSource } from './deno.ts'
 
 /*
  * Based on https://deno.land/x/dmm
@@ -32,7 +33,7 @@ export class Bumper {
 
 	private fs: FS
 	private sources: AnySource[]
-	cache: { [index: string]: Promise<Updater<any> | null> } = {}
+	cache: { [index: string]: Promise<string | null> } = {}
 	private changedSources: Set<string> = new Set()
 	private fetchCount: number = 0
 	
@@ -44,14 +45,10 @@ export class Bumper {
 	}
 
 	parse(url: string): AnyImportSpec | null {
+		const overrideFn = makeOverrideFn<any>(this.opts.explicitSpecs ?? [])
 		for (const source of this.sources) {
-			const importSpec = source.parse(url)
+			const importSpec = source.parse(url, overrideFn)
 			if (importSpec) {
-				for (const override of (this.opts.explicitSpecs ?? [])) {
-					if (importSpec.spec.matchesSpec(override)) {
-						importSpec.spec.setSpec(override)
-					}
-				}
 				return importSpec
 			}
 		}
@@ -64,7 +61,13 @@ export class Bumper {
 			const specId = importSpec.spec.identity
 			let cached = this.cache[specId]
 			if (cached == null) {
-				cached = this.cache[specId] = importSpec.spec.resolve(this.verbose)
+				cached = this.cache[specId] = (async () => {
+					const version = importSpec.spec.resolve(this.verbose)
+					if (version != null && this.opts.verbose) {
+						console.log(`[version] ${version} ${specId}`)
+					}
+					return version
+				})()
 				this.fetchCount++
 				if (this.verbose) {
 					console.warn(`[fetch] ${specId}`)
@@ -74,7 +77,8 @@ export class Bumper {
 			}
 			const resolved = await cached
 			if (resolved) {
-				const replacement = resolved(importSpec.import)
+				const imp: BaseImport = { ...importSpec.import, version: resolved }
+				const replacement = importSpec.spec.show(imp as any)
 				if (replacement !== url) {
 					this.changedSources.add(specId)
 					return replacement
@@ -84,7 +88,20 @@ export class Bumper {
 		return url
 	}
 
-	summarize() {
+	async summarize() {
+		const missing: string[] = []
+		for (const [k,v] of Object.entries(this.cache)) {
+			if (await v == null) {
+				missing.push(k)
+			}
+		}
+		if (missing.length > 1) {
+			console.log('')
+			console.log(`${missing.length} sources have no available versions:`)
+			for (const m of missing) {
+				console.log(` - ${m}`)
+			}
+		}
 		console.log(`\n${this.fetchCount} remote sources found, ${this.changes()} updated`)
 	}
 	
@@ -140,7 +157,7 @@ export class Bumper {
 		}
 
 		await walkRoots(roots, opts, handle)
-		bumper.summarize()
+		await bumper.summarize()
 		return bumper.changes()
 	}
 }
@@ -189,5 +206,5 @@ export const defaultOptions : BumpOptions = {
 }
 
 export const defaultSources: Array<AnySource> = [
-	GithubSource
+	GithubSource, DenoSource
 ]

@@ -1,13 +1,11 @@
 import { run } from "../cmd.ts";
 import { notNull } from "../util/object.ts";
 import { Version } from "../version.ts";
-import { BumpSpec, ImportSpec, Spec, Updater } from './source.ts'
+import { BaseImport, BumpSpec, ImportSpec, ImportUtil, OverrideFn, Spec, Updater } from './source.ts'
 
-export interface GithubImport {
+export interface GithubImport extends BaseImport {
 	prefix: string,
-	path: string,
 	version: string,
-	spec: string | null,
 	owner: string,
 	repo: string,
 }
@@ -22,13 +20,13 @@ export class GithubSpec implements Spec<GithubImport> {
 	repoName: string
 	repoPath: string
 	repoURL: string
-	ref: string | null
+	spec: string | null
 
 	constructor(imp: {spec: string | null, owner: string, repo: string}) {
-		this.ref = imp.spec
+		this.spec = imp.spec
 		this.repoName = imp.repo
 		this.repoPath = `${imp.owner}/${imp.repo}`
-		this.identity = GithubSpec.addSpec(imp, `github:${this.repoPath}`)
+		this.identity = ImportUtil.addSpec(imp, `github:${this.repoPath}`)
 
 		// TODO: use https if there's known creds, otherwise ssh?
 		// TODO: reuse deno's credentials system for transparently accessing private repos
@@ -36,15 +34,11 @@ export class GithubSpec implements Spec<GithubImport> {
 	}
 
 	static show(imp: GithubImport): string {
-		return GithubSpec.addSpec(imp, `${imp.prefix}/${imp.owner}/${imp.repo}/${imp.version}/${imp.path}`)
+		return ImportUtil.addSpec(imp, `${imp.prefix}/${imp.owner}/${imp.repo}/${imp.version}/${imp.path}`)
 	}
-
-	private static addSpec(imp: { spec: string | null }, s: string): string {
-		if (imp.spec) {
-			return s + '#' + imp.spec
-		} else {
-			return s
-		}
+	
+	show(imp: GithubImport): string {
+		return GithubSpec.show(imp)
 	}
 
 	matchesSpec(spec: BumpSpec): boolean {
@@ -52,28 +46,16 @@ export class GithubSpec implements Spec<GithubImport> {
 	}
 
 	setSpec(spec: BumpSpec): void {
-		this.ref = spec.spec
+		this.spec = spec.spec
 	}
 
-	async resolve(verbose: boolean): Promise<Updater<GithubImport>|null> {
+	async resolve(verbose: boolean): Promise<string|null> {
 		return this.resolveFrom(this.repoURL, verbose)
 	}
 
-	root(imp: GithubImport): string {
-		return GithubSpec.show({ ... imp, path: "", spec: null})
-	}
-
-	async resolveFrom(repoURL: string, verbose: boolean): Promise<Updater<GithubImport>|null> {
+	async resolveFrom(repoURL: string, verbose: boolean): Promise<string|null> {
 		this.repoURL = repoURL // only used in testing
-		const version = await this.resolveLatestVersion(verbose)
-		if (version) {
-			if (verbose) {
-				console.log(`[version] ${version} ${this.identity}`)
-			}
-			return (imp: GithubImport) => GithubSpec.show({ ...imp, version })
-		} else {
-			return null
-		}
+		return await this.resolveLatestVersion(verbose)
 	}
 
 	private parseRef(line: string): Ref {
@@ -91,7 +73,7 @@ export class GithubSpec implements Spec<GithubImport> {
 
 	private async resolveLatestVersion(verbose: boolean): Promise<string|null> {
 		let refs: Array<Ref> = []
-		const refFilter = this.ref || 'v*'
+		const refFilter = this.spec || 'v*'
 		const processLine = (line: string) => refs.push(this.parseRef(line))
 		const cmd = ['git', 'ls-remote']
 		const isWildcard = refFilter.lastIndexOf('*') >= 0
@@ -117,12 +99,12 @@ export class GithubSpec implements Spec<GithubImport> {
 			return null
 		}
 		if (!isWildcard) {
-			const matchingRefs = refs.filter(r => r.name === this.ref)
+			const matchingRefs = refs.filter(r => r.name === this.spec)
 			if (matchingRefs.length == 0) {
-				console.warn(`WARN: refs received from ${this.repoPath}, but none matched '${this.ref}'. Returned refs: ${JSON.stringify(refs)}`)
+				console.warn(`WARN: refs received from ${this.repoPath}, but none matched '${this.spec}'. Returned refs: ${JSON.stringify(refs)}`)
 				return null
 			} else if (matchingRefs.length > 1) {
-				console.warn(`WARN: ${matchingRefs.length} matches for '${this.ref}' in ${this.repoPath}`)
+				console.warn(`WARN: ${matchingRefs.length} matches for '${this.spec}' in ${this.repoPath}`)
 			}
 			return matchingRefs[0].commit
 		}
@@ -152,18 +134,18 @@ export class GithubSpec implements Spec<GithubImport> {
 }
 
 export const GithubSource = {
-	parse(url: string): ImportSpec<GithubImport> | null {
-		const gh = url.match(/^(https:\/\/raw\.githubusercontent\.com)\/([^/]+)\/([^/]+)\/([^/]+)\/([^#]*)(#(.+))?$/)
+	parse(url: string, override: OverrideFn<GithubImport>): ImportSpec<GithubImport> | null {
+		const gh = url.match(/^(https:\/\/raw\.githubusercontent\.com)\/([^/]+)\/([^/]+)\/([^/]+)\/([^#]*)(?:#(.+))?$/)
 		if (gh !== null) {
-			const [_match, prefix, owner, repo, version, path, _hash, spec] = gh
-			const imp = {
+			const [_match, prefix, owner, repo, version, path, spec] = gh
+			const imp = override({
 				owner: notNull(owner),
 				repo: notNull(repo),
 				prefix: notNull(prefix),
 				version: notNull(version),
 				spec: spec ? spec : null,
 				path: notNull(path),
-			}
+			}, (imp, spec) => new GithubSpec(imp).matchesSpec(spec))
 			return { import: imp, spec: new GithubSpec(imp) }
 		}
 		

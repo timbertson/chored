@@ -4,17 +4,18 @@ import { DenoFS, FakeFS } from '../../lib/fs/impl.ts'
 import { run } from '../../lib/cmd.ts'
 
 import { Bumper } from '../../lib/deps/bump.ts'
-import { BumpSpec, Source, TestImport } from '../../lib/deps/source.ts'
+import { BaseImport, BumpSpec, ImportUtil, makeOverrideFn, OverrideFn, Source, TestImport } from '../../lib/deps/source.ts'
 import { GithubSource, GithubSpec, GithubImport } from '../../lib/deps/github.ts'
+import { DenoSource, DenoSpec, DenoImport } from '../../lib/deps/deno.ts'
 import withTempDir from "../../lib/fs/with_temp_dir.ts";
 
 const url = (r: string, p?: { spec?: string, repo?: string, path?: string }) => {
 	const base = `https://raw.githubusercontent.com/${p?.repo ?? 'timbertson/chored'}/${r}/${p?.path ?? 'lib/README.md'}`
-	return p?.spec ? base+'#'+p.spec : base
+	return ImportUtil.addSpec({ spec: p?.spec ?? null }, base)
 }
 
-function parseGH(s: string): { spec: GithubSpec, import: GithubImport } {
-	let p = GithubSource.parse(s)
+function parseGH(s: string, overrides: BumpSpec[] = []): { spec: GithubSpec, import: GithubImport } {
+	let p = GithubSource.parse(s, makeOverrideFn<GithubImport>(overrides))
 	if (p == null) {
 		throw new Error(`Can't parse GH: ${s}`)
 	} else {
@@ -22,7 +23,21 @@ function parseGH(s: string): { spec: GithubSpec, import: GithubImport } {
 	}
 }
 
-Deno.test('bump parseGH', (t) => {
+const denoUrl = (v: string | null, p?: { spec?: string, name?: string, path?: string }) => {
+	const base = `https://deno.land/x/${p?.name ?? 'chored'}${v == null ? '' : '@'+v}/${p?.path ?? 'lib/README.md'}`
+	return ImportUtil.addSpec({ spec: p?.spec ?? null }, base)
+}
+
+function parseDeno(s: string, overrides: BumpSpec[] = []): { spec: DenoSpec, import: DenoImport } {
+	let p = DenoSource.parse(s, makeOverrideFn<DenoImport>(overrides))
+	if (p == null) {
+		throw new Error(`Can't parse Deno: ${s}`)
+	} else {
+		return { spec: p.spec as DenoSpec, import: p.import }
+	}
+}
+
+Deno.test('GithubSource', async (t) => {
 	const base = url('SHA')
 	const expected = {
 		owner: "timbertson",
@@ -32,29 +47,64 @@ Deno.test('bump parseGH', (t) => {
 		spec: null,
 		path: "lib/README.md"
 	}
-	assertEquals(parseGH(base)?.import, expected)
-	assertEquals(parseGH(base + "#ref")?.import, { ... expected, spec: 'ref' })
-	assertEquals(parseGH(url('SHA', { path: '' }))?.import, { ... expected, path: '' })
+
+	await t.step('parsing', () => {
+		assertEquals(parseGH(base)?.import, expected)
+		assertEquals(parseGH(base + "#ref")?.import, { ... expected, spec: 'ref' })
+		assertEquals(parseGH(url('SHA', { path: '' }))?.import, { ... expected, path: '' })
+	})
+
+	await t.step('root ', () => {
+		const parsed = notNull(parseGH(url('SHA', { spec: 'spec' })))
+		assertEquals(parsed.spec.show(ImportUtil.root(parsed.import)), 'https://raw.githubusercontent.com/timbertson/chored/SHA/')
+	})
+
+	await t.step('overrides', () => {
+		function overrideSpec(o: BumpSpec) {
+			return notNull(parseGH(base, [o])).spec.spec
+		}
+		assertEquals(overrideSpec({ sourceName: 'other', spec: 'foo' }), null)
+		assertEquals(overrideSpec({ sourceName: 'chored', spec: 'foo' }), 'foo')
+		assertEquals(overrideSpec({ sourceName: 'timbertson/chored', spec: 'foo' }), 'foo')
+	})
 })
 
-Deno.test('bump parseGH with override', async (t) => {
-	const base = url('SHA')
-	const parsed = notNull(parseGH(base)?.spec)
-	await t.step('name mismatch', () => {
-		assertEquals(parsed.matchesSpec({ sourceName: 'other', spec: 'foo' }), false)
+Deno.test('DenoSource', async (t) => {
+	const base = denoUrl('1.0')
+	const expected: DenoImport = {
+		name: "chored",
+		prefix: "https://deno.land/x",
+		version: "1.0",
+		spec: null,
+		path: "lib/README.md"
+	}
+
+	await t.step('parsing', () => {
+		assertEquals(parseDeno(base)?.import, expected)
+		assertEquals(parseDeno(base.replace('/x/chored', '/std'))?.import, { ... expected, name: 'std', prefix: 'https://deno.land' })
+		assertEquals(parseDeno(denoUrl(null))?.import, { ... expected, version: null })
+		assertEquals(parseDeno(base + "#ref")?.import, { ... expected, spec: 'ref' })
+		assertEquals(parseDeno(denoUrl('1.0', { path: '' }))?.import, { ... expected, path: '' })
 	})
-	await t.step('short name', () => {
-		assertEquals(parsed.matchesSpec({ sourceName: 'chored', spec: 'foo' }), true)
+
+	await t.step('root', () => {
+		const parsed = notNull(parseDeno(denoUrl('1.0', { spec: 'spec' })))
+		assertEquals(parsed.spec.show(ImportUtil.root(parsed.import)), 'https://deno.land/x/chored@1.0/')
 	})
-	await t.step('full name', () => {
-		assertEquals(parsed.matchesSpec({ sourceName: 'timbertson/chored', spec: 'bar' }), true)
+
+	await t.step('overrides', () => {
+		function overrideSpec(o: BumpSpec) {
+			return notNull(parseDeno(base, [o])).spec.spec
+		}
+		assertEquals(overrideSpec({ sourceName: 'other', spec: 'foo' }), null)
+		assertEquals(overrideSpec({ sourceName: 'chored', spec: 'foo' }), 'foo')
 	})
 })
 
 const testSha = '7fa1accd89e45af5c7e60f904d9710c9f4024315'
 const testShaTag = 'test-version-0.1.1'
 
-// CI run s a shallow clone; so fetch just these
+// CI runs a shallow clone; so fetch just these
 async function fetchTestCommit() {
 	if (Deno.env.get('CI') === 'true') {
 		await run(['git', 'fetch', '--depth=1', 'origin', `+refs/tags/${testShaTag}:refs/tags/${testShaTag}`])
@@ -68,9 +118,7 @@ Deno.test('bump resolve branch', async () => {
 	await fetchTestCommit()
 	await run(['git', 'branch', '--force', spec, testSha], { printCommand: false })
 	
-	const update = notNull(await source.spec.resolveFrom('.', false))
-	assertEquals(update(source.import), url(testSha, { spec }))
-	assertEquals(update({ ... source.import, path: 'Dockerfile' }), url(testSha, { spec, path: 'Dockerfile' }))
+	assertEquals(await source.spec.resolveFrom('.', false), testSha)
 })
 
 Deno.test('bump resolve wildcard tag', async () => {
@@ -78,8 +126,7 @@ Deno.test('bump resolve wildcard tag', async () => {
 	const source = notNull(parseGH(url('SHA', { spec })))
 
 	await fetchTestCommit()
-	const update = notNull(await source.spec.resolveFrom('.', false))
-	assertEquals(update(source.import), url(testShaTag, { spec }))
+	assertEquals(await source.spec.resolveFrom('.', false), testShaTag)
 })
 
 Deno.test('GithubSource cache identity only cares about repo and spec', () => {
@@ -163,16 +210,19 @@ Deno.test('bump walk', () => withTempDir({}, async (dir) => {
  `.trim())
  	
  	const testSource: Source<TestImport> = {
-		parse(url: string) {
+		parse(url: string, _override: OverrideFn<TestImport>) {
+			const m = notNull(url.match(/^(https:\/\/example.com)\/(v[^\/]+)\/(.*)?$/), 'extraction for ' + url)
+			const [_match, prefix, version, path] = m
 			return {
-				import: { url },
+				import: { prefix, version, path, spec: null },
 				spec: {
 					identity: url,
-					root(imp: TestImport) { return "" },
 					matchesSpec(spec: BumpSpec) { return false },
-					setSpec(spec: BumpSpec) {},
-					resolve(verbose: boolean) {
-						return Promise.resolve((imp: TestImport) => imp.url + "-new")
+					show(imp: TestImport) {
+						return `${imp.prefix}/${imp.version}/${imp.path}`
+					},
+					async resolve(verbose: boolean) {
+						return version  +'-new'
 					}
 				}
 			}
@@ -182,12 +232,11 @@ Deno.test('bump walk', () => withTempDir({}, async (dir) => {
 	const changes = await Bumper._bump([dir], { verbose: false }, [ testSource ])
 	
 	assertEquals(await DenoFS.readTextFile(`${dir}/main.ts`), `
-		export * from 'https://example.com/v1/main.ts-new'
+		export * from 'https://example.com/v1-new/main.ts'
 	`.trim())
 	assertEquals(await DenoFS.readTextFile(`${dir}/a/b/c/nested.ts`), `
-		export * from 'https://example.com/v1/lib/nested.ts-new'
+		export * from 'https://example.com/v1-new/lib/nested.ts'
  `.trim())
 
 	assertEquals(changes, 2)
-	
 }))

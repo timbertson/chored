@@ -1,5 +1,6 @@
 import { merge } from "./util/object.ts";
 import { defaultOptions, defaultSources, Bumper } from './deps/bump.ts'
+import { BaseImport, ImportUtil } from './deps/source.ts'
 import { computeLock } from "./lock.ts";
 import { DenoFS } from "./fs/impl.ts";
 import { encode as b64Url } from 'https://deno.land/std@0.133.0/encoding/base64url.ts'
@@ -44,7 +45,7 @@ export async function importMapObject(opts: Options, sources: KV): Promise<KV> {
 				if (!localPath.endsWith('/')) {
 					localPath = localPath + '/'
 				}
-				const root = importSpec.spec.root(importSpec.import as any)
+				const root = importSpec.spec.show(ImportUtil.root(importSpec.import) as any)
 				imports[root] = `file://${cwd}/${localPath}`
 				matched = true
 				if (opts.verbose) {
