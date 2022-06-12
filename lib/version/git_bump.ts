@@ -1,6 +1,7 @@
 import { Version, Index, namedIndexes, resolveIndex } from '../version.ts'
 import { filterNull, sortBy } from '../util/collection.ts'
 import { CmdRunner, describeWithAutoDeepen } from '../git/describe_impl.ts'
+import { notNull } from "../util/object.ts";
 
 interface CommonOptions {
 	defaultComponent?: Index
@@ -205,13 +206,17 @@ export class Engine {
 		const current = await describeWithAutoDeepen(this.runner, this.ctx.mergeTargetRef)
 
 		let directive: CommitDirective = { component: null, release: false }
-		const currentVersion = current.tag == null ? null : Version.parse(current.tag)
+		let currentVersion: Version | null = null
 		if (current.tag == null) {
 			console.log("No current version detected")
 		} else {
-			console.log("Current version: " + currentVersion + " (from tag "+current.tag+")")
+			currentVersion = Version.parse(current.tag)
+			console.log("Current version: " + currentVersion?.show() + " (from tag "+current.tag+")")
 			if (current.isExact) {
 				console.log("Commit is already tagged")
+				if (opts.action === 'push') {
+					await this.push(currentVersion)
+				}
 				return null
 			}
 			directive = parseCommitLines(await this.commitLinesSince(current.tag))
@@ -235,6 +240,12 @@ export class Engine {
 		}
 	}
 
+	async push(version: Version) {
+		let tag = version.tag()
+		console.log("Pushing: "+ tag)
+		await this.runner.run(['git', 'push', 'origin', 'tag', tag])
+	}
+
 	async applyVersion(action: Action, version: Version) {
 		let tag = version.tag()
 		if (action === 'print') {
@@ -243,8 +254,7 @@ export class Engine {
 			console.log("Tagging: "+ tag)
 			await this.runner.run(['git', 'tag', tag, 'HEAD'])
 			if (action === 'push') {
-				console.log("Pushing: "+ tag)
-				await this.runner.run(['git', 'push', 'origin', 'tag', tag])
+				await this.push(version)
 			}
 		}
 	}
