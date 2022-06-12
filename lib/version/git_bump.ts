@@ -1,6 +1,5 @@
 import { Version, Index, namedIndexes, resolveIndex } from '../version.ts'
 import { filterNull, sortBy } from '../util/collection.ts'
-import { Partial } from '../util/object.ts'
 import { CmdRunner, describeWithAutoDeepen } from '../git/describe_impl.ts'
 
 interface CommonOptions {

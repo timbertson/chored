@@ -8,10 +8,6 @@ export function notNull<T>(v: T|undefined|null, desc?: string): T {
 	return v
 }
 
-export type Partial<T> = {
-	[P in keyof T]?: T[P];
-}
-
 export function merge<T>(a: T, ...rest: Partial<T>[]): T {
 	const ret: T = {...a}
 	for (const addition of rest) {
