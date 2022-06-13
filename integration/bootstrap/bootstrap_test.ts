@@ -14,4 +14,5 @@ Deno.test('bootstrap', () => withTempDir({}, async (dir: string) => {
 	await run(['bash', '-c', notNull(installation)], { cwd: dir })
 	assertEquals(readdir(dir), ['.gitattributes', 'chored', 'choredefs'])
 	assertEquals(readdir(dir + '/choredefs'), ['render.ts'])
+	console.log(await Deno.readTextFile(`${dir}/choredefs/render.ts`))
 }))

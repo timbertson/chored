@@ -28,7 +28,7 @@ You can use it for anything, but it's built primarily to solve the problem of CI
 # Getting started
 
 ```sh
-curl -sSL https://raw.githubusercontent.com/timbertson/chored/main/install.sh | bash
+curl -sSL https://deno.land/x/chored/install.sh | bash
 ```
 
 This will create a skeleton `choredefs/render.ts` and then run it to generate the bare minimum files:
@@ -40,7 +40,7 @@ If you don't already have `deno` available, it will be downloaded into `~/.cache
 ### Running a third-party chore
 
 ```sh
-./chored https://raw.githubusercontent.com/timbertson/chored/main/choredefs/greet.ts --string name anonymous
+./chored https://deno.land/x/chored/choredefs/greet.ts --string name anonymous
 ```
 
 ### Creating your own chores
@@ -70,6 +70,12 @@ Instead of running a third-party chore directly, it's usually more convenient to
 export * from 'https://raw.githubusercontent.com/timbertson/chored/main/choredefs/greet.ts'
 ```
 
+or for `deno.land` modules:
+
+```ts
+export * from 'https://deno.land/x/chored/choredefs/greet.ts'
+```
+
 You can also import the third party chore but expose a wrapper function, which passes options specific to your project, for example.
 
 ```ts
@@ -85,7 +91,9 @@ export default function(opts: {}) {
 
 Since it's built on [`deno`][deno], remote dependencies are simply typescript `imports`, and they're fetched only on first use - if you don't run a module, its dependencies don't need to be downloaded.
 
-In almost all cases, you should lock a dependency to a concrete version - a release tag or commit, rather than a branch name. To help with this, the builtin `deps bump` action respects a branch (or wildcard tag) placed in the URL anchor.
+In almost all cases, you should lock a dependency to a concrete version - a release tag or commit, rather than a branch name. To help with this, the builtin `deps bump` action automatically pins github imports to a commit, and deno.land imports to a version.
+
+To control the specifics, you can place a branch (or wildcard tag) in the URL anchor for github, and wildcard version for deno.land.
 
 So you can write:
 
@@ -93,9 +101,21 @@ So you can write:
 import { greet } from 'https://raw.githubusercontent.com/timbertson/chored/main/choredefs/greet.ts#main'
 ```
 
-..and then run `./chored deps bump`. That'll replace `main` in the URL with the current commit SHA on that branch. The `#main` will remain, so that it knows which branch to track on future runs.
+or:
+
+```ts
+import { greet } from 'https://deno.land/x/chored/choredefs/greet.ts'
+```
+
+..and then run `./chored deps bump`. That'll place the latest git revision (for github) or release tag (for deno.land) `main` into the URL. The `#main` will remain, so that it knows which branch to track on future runs.
 
 You can also use a wildcard for tags, e.g. `#v1.2.*` for a crude emulation of semver.
+
+### Using development dependencies:
+
+Firstly, for `chored` itself you can replace any `deno.land` imports with `raw.githubusercontent`. This lets you pin to a specific commit, and you can easily use your own fork. If you update the import in your `render` chore and then run `./chored/render`, the `./chored` script itself will now `main.ts` from the new location.
+
+Secondly, you can use local (on-disk) versions of `deno.land` an` raw.githubusercontent.com` dependencies. Just run `deno --local`; it will print a setup message if you haven't defined the appropriate chore locally.
 
 # Design tradeoffs in `chored`:
 

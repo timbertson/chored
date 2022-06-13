@@ -35,8 +35,9 @@ _main() {
 
 	DENO_ARGV=(--unstable --allow-all --check=local)
 
-	HEAD_SHA="$(git ls-remote https://github.com/timbertson/chored.git main | head -n 1 | cut -f 1)"
-	BOOTSTRAP="https://raw.githubusercontent.com/timbertson/chored/$HEAD_SHA/lib/bootstrap.ts"
+	REPO="https://github.com/timbertson/chored.git"
+	VERSION="$(git ls-remote --refs --tags --sort=-v:refname "$REPO" 'refs/tags/v*' | head -n 1 | sed -e 's@.*/v@@')"
+	BOOTSTRAP="https://deno.land/x/chored@$VERSION/lib/bootstrap.ts"
 	exec "$DENO" run "${DENO_ARGV[@]}" "${BOOTSTRAP_OVERRIDE:-$BOOTSTRAP}"
 
 }
