@@ -5,6 +5,7 @@
 import { replaceSuffix, trimIndent } from '../util/string.ts'
 export * as deps from './deps.ts'
 export { default as render } from './render.ts'
+export { default as about } from './about.ts'
 
 export function localImportMap(opts: {}) {
 	const url = replaceSuffix(import.meta.url, 'builtins.ts', 'localImportMap.ts')

@@ -16,7 +16,7 @@ interface Versions {
 	versions: string[]
 }
 
-async function listVersions(name: string): Promise<Versions> {
+export async function listVersions(name: string): Promise<Versions> {
 	const response = await fetch(`${CDN}/${u(name)}/meta/versions.json`)
 	const json = await response.json()
 	assertEquals(typeof(json.latest), 'string')
