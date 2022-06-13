@@ -3,7 +3,7 @@ import { DenoFS } from './fs/impl.ts'
 
 const renderModule = import.meta.url.replace(/bootstrap.ts$/, 'render.ts')
 
-const renderTask = `import * as Render from '${renderModule}#main'
+const renderTask = `import * as Render from '${renderModule}'
 
 export default async function(opts: {}) {
   Render.render([
