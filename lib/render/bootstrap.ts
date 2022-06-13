@@ -85,7 +85,7 @@ export function wrapperText(opts: Options) {
 export function bootstrapText() {
 	return makeScript(`
 	REPO="https://github.com/timbertson/chored.git"
-	VERSION="$(git ls-remote --refs --tags --sort=-v:refname "$REPO" 'refs/tags/v*' | head -n 1 | sed -e 's@.*/v@@')"
+	VERSION="$(git ls-remote --refs --tags --sort=-v:refname "$REPO" 'refs/tags/v*' | head -n 1 | sed -e 's@.*/@@')"
 	BOOTSTRAP="https://deno.land/x/chored@$VERSION/lib/bootstrap.ts"
 	exec "$DENO" run "\${DENO_ARGV[@]}" "\${BOOTSTRAP_OVERRIDE:-$BOOTSTRAP}"
 `)
