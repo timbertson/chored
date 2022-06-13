@@ -1,7 +1,5 @@
-import { Options, importMap } from '../lib/localImportMap.ts'
+import { Make } from '../lib/chore/localImportMap.ts'
 
-export default async function(opts: Options) {
-	await importMap(opts, {
-		chored: '../chored',
-	})
-}
+export default Make({
+	chored: '../chored',
+})

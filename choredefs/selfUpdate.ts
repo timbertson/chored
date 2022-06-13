@@ -1,6 +1,6 @@
 import * as Update from '../lib/self_update.ts'
-import { computeLock } from "../lib/lock.ts";
-import bump from "../lib/chore/bump.ts";
+import { computeLock } from "../lib/deps/lock.ts";
+import { bump } from "../lib/chore/deps.ts";
 import render from "./render.ts";
 import { equalSets } from "../lib/util/collection.ts";
 import * as Git from "../lib/git.ts";

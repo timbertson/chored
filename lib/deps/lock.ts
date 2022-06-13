@@ -1,11 +1,11 @@
-import { Config, defaultConfig } from './main/config.ts'
-import { run } from './cmd.ts'
-import withTempFile from './fs/with_temp_file.ts'
-import { replaceSuffix } from './util/string.ts'
+import { Config, defaultConfig } from '../main/config.ts'
+import { run } from '../cmd.ts'
+import withTempFile from '../fs/with_temp_file.ts'
+import { replaceSuffix } from '../util/string.ts'
 
 export const lockPath = (config: Config = defaultConfig) => `${config.taskRoot}/lock.json`
 
-const mainModule = replaceSuffix(import.meta.url, 'lib/lock.ts', 'lib/main.ts')
+const mainModule = replaceSuffix(import.meta.url, 'deps/lock.ts', 'main.ts')
 
 async function lockModules(paths: Array<string>, config: Config = defaultConfig, lockPathOverride?: string): Promise<void> {
 	const defaultLockPath = lockPath(config)

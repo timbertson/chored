@@ -11,14 +11,12 @@ Deno.test('local dependency map', async (t) => withTempDir({}, async (dir) => {
 		import { walk } from 'https://raw.githubusercontent.com/denoland/deno_std/0.133.0/fs/walk.ts#0.133.*'
 		import { sort } from 'https://raw.githubusercontent.com/timbertson/chored/8dadebec07917f983d01c7c5cbc5c8dcdcfb42b0/lib/util/collection.ts#8dadebec07917f983d01c7c5cbc5c8dcdcfb42b0'
 		import { render } from '${cwd}/lib/render.ts'
-		import { importMap, Options } from '${cwd}/lib/localImportMap.ts'
+		import { Make } from '${cwd}/lib/chore/localImportMap.ts'
 		
-		export async function localImportMap(opts: Options) {
-			await importMap(opts, {
-				chored: 'chored-local',
-				deno_std: 'std-local'
-			})
-		}
+		export const localImportMap = Make({
+			chored: 'chored-local',
+			deno_std: 'std-local'
+		})
 
 		export function printLocal(opts: {}) {
 			console.log(sort([1]))

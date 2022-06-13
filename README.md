@@ -85,7 +85,7 @@ export default function(opts: {}) {
 
 Since it's built on [`deno`][deno], remote dependencies are simply typescript `imports`, and they're fetched only on first use - if you don't run a module, its dependencies don't need to be downloaded.
 
-In almost all cases, you should lock a dependency to a concrete version - a release tag or commit, rather than a branch name. To help with this, the builtin `bump` action respects a branch (or wildcard tag) placed in the URL anchor.
+In almost all cases, you should lock a dependency to a concrete version - a release tag or commit, rather than a branch name. To help with this, the builtin `deps bump` action respects a branch (or wildcard tag) placed in the URL anchor.
 
 So you can write:
 
@@ -93,7 +93,7 @@ So you can write:
 import { greet } from 'https://raw.githubusercontent.com/timbertson/chored/main/choredefs/greet.ts#main'
 ```
 
-..and then run `./chored bump`. That'll replace `main` in the URL with the current commit SHA on that branch. The `#main` will remain, so that it knows which branch to track on future runs.
+..and then run `./chored deps bump`. That'll replace `main` in the URL with the current commit SHA on that branch. The `#main` will remain, so that it knows which branch to track on future runs.
 
 You can also use a wildcard for tags, e.g. `#v1.2.*` for a crude emulation of semver.
 

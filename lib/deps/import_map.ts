@@ -1,15 +1,21 @@
-import { merge } from "./util/object.ts";
-import { defaultOptions, defaultSources, Bumper } from './deps/bump.ts'
-import { BaseImport, ImportUtil } from './deps/source.ts'
+import { merge } from "../util/object.ts";
+import { trimIndent } from "../util/string.ts";
+import { defaultOptions, defaultSources, Bumper } from './bump.ts'
+import { BaseImport, ImportUtil, BumpSpec } from './source.ts'
 import { computeLock } from "./lock.ts";
-import { DenoFS } from "./fs/impl.ts";
+import { DenoFS } from "../fs/impl.ts";
 import { encode as b64Url } from 'https://deno.land/std@0.143.0/encoding/base64url.ts'
-import { trimIndent } from "./util/string.ts";
 
-type KV = { [index: string]: string }
+export type KV = { [index: string]: string }
 
 export interface Options {
 	verbose?: boolean
+}
+
+interface FilteredSource {
+	spec: BumpSpec
+	path: string
+	used: boolean
 }
 
 export async function importMapObject(opts: Options, sources: KV): Promise<KV> {
@@ -17,12 +23,15 @@ export async function importMapObject(opts: Options, sources: KV): Promise<KV> {
 	const bumpOpts = merge(defaultOptions, opts)
 	const bumper = new Bumper({ sources: defaultSources, opts: bumpOpts })
 	const imports: KV = {}
-	const filteredSources = []
+	const filteredSources: FilteredSource[] = []
 
-	for (const pair of Object.entries(sources)) {
-		const path = pair[1]
+	for (const [name, path] of Object.entries(sources)) {
 		if (await DenoFS.exists(path)) {
-			filteredSources.push(pair)
+			filteredSources.push({
+				spec: { sourceName: name, spec: 'unused' },
+				path,
+				used: false
+			})
 		} else {
 			console.warn(`[missing]: ${path}`)
 		}
@@ -39,15 +48,16 @@ export async function importMapObject(opts: Options, sources: KV): Promise<KV> {
 
 		let matched = false
 		const cwd = Deno.cwd()
-		for (const [name, path] of filteredSources) {
-			if (importSpec.spec.matchesSpec({ sourceName: name, spec: "unused"})) {
-				let localPath = path
+		for (const source of filteredSources) {
+			if (importSpec.spec.matchesSpec(source.spec)) {
+				let localPath = source.path
 				if (!localPath.endsWith('/')) {
 					localPath = localPath + '/'
 				}
 				const root = importSpec.spec.show(ImportUtil.root(importSpec.import) as any)
 				imports[root] = `file://${cwd}/${localPath}`
 				matched = true
+				source.used = true
 				if (opts.verbose) {
 					console.warn(`[match]: ${root} (${url})`)
 				}
@@ -55,6 +65,12 @@ export async function importMapObject(opts: Options, sources: KV): Promise<KV> {
 			if (!matched && opts.verbose) {
 				console.warn(`[no-match]: ${url}`)
 			}
+		}
+	}
+
+	for (const source of filteredSources) {
+		if (!source.used) {
+			console.warn(`[unused]: ${source.spec.sourceName}`)
 		}
 	}
 	if (opts.verbose) {
@@ -70,20 +86,4 @@ export async function importMap(opts: Options, sources: KV) {
 		console.warn(JSON.stringify(result, null, 2))
 	}
 	console.log('data:text/plain;base64,' + b64Url(JSON.stringify(result)))
-}
-
-export function logMissingChore(opts: KV) {
-	console.warn(trimIndent(`
-	ERROR: To use the --local flag, you must implement your own
-	       \`localImportMap\` chore. Here's some sample code to
-	       place in choredefs/localImportMap.ts:
-
-	import { Options, importMap } from '${import.meta.url}'
-	export default async function(opts: Options) {
-		await importMap(opts, {
-			chored: '../chored',
-		})
-	}
-	`))
-	Deno.exit(1)
 }
