@@ -19,8 +19,11 @@ async function lockModules(paths: Array<string>, config: Config = defaultConfig,
 }
 
 async function choredefModules(config: Config = defaultConfig): Promise<Array<string>> {
-	const entries: Iterable<Deno.DirEntry> = Deno.readDirSync(config.taskRoot)
-	return Array.from(entries).map(e => `${config.taskRoot}/${e.name}`).filter(p => p.endsWith(".ts"))
+	const result: string[] = []
+	for await (const entry of Deno.readDir(config.taskRoot)) {
+		result.push(`${config.taskRoot}/${entry.name}`)
+	}
+	return result.filter(p => p.endsWith(".ts"))
 }
 
 export async function lock(config: Config = defaultConfig) {
@@ -31,7 +34,7 @@ export interface Lock {
 	[index: string]: string
 }
 
-export async function computeLock(config: Config = defaultConfig): Promise<Lock> {
+export function computeLock(config: Config = defaultConfig): Promise<Lock> {
 	return withTempFile({ prefix: 'lock-', suffix: '.json' }, async (path: string) => {
 		await lockModules(await choredefModules(config), config, path)
 		const jsonStr = await Deno.readTextFile(path)

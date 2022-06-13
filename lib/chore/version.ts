@@ -32,6 +32,21 @@ export function Make(defaults: Partial<CliOptions>) {
 		console.log(parsed.version.show())
 	}
 
+	function tryTemplate(s: string | null): VersionTemplate|null {
+		if (s == null) {
+			return null
+		}
+		const candidate = VersionTemplate.parseLax(s)
+		if (candidate == null) {
+			console.log(`Ignoring fallback versionTemplate: ${s}`)
+		}
+		return candidate
+	}
+
+	function originRefOrHead(ref: string|null) {
+		return ref == null ? 'HEAD' : `origin/${ref}`
+	}
+
 	const bump = defaulted(defaults, async (opts: CliOptions): Promise<Version|null> => {
 		let versionTemplate: VersionTemplate | null = null
 		let ctx = defaultContext
@@ -39,9 +54,6 @@ export function Make(defaults: Partial<CliOptions>) {
 		let action: Action = opts.action ?? defaultOptions.action
 		
 		if (GH.isPullRequest) {
-			function originRefOrHead(ref: string|null) {
-				return ref == null ? 'HEAD' : `origin/${ref}`
-			}
 			ctx = {
 				headRef: originRefOrHead(GH.pullRequestBranch),
 				mergeTargetRef: originRefOrHead(GH.pullRequestTarget),
@@ -60,16 +72,6 @@ export function Make(defaults: Partial<CliOptions>) {
 		if (opts.versionTemplate != null) {
 			versionTemplate = VersionTemplate.parse(opts.versionTemplate)
 		} else {
-			function tryTemplate(s: string | null): VersionTemplate|null {
-				if (s == null) {
-					return null
-				}
-				const candidate = VersionTemplate.parseLax(s)
-				if (candidate == null) {
-					console.log(`Ignoring fallback versionTemplate: ${s}`)
-				}
-				return candidate
-			}
 			versionTemplate = (
 				tryTemplate(await implicitVersionTemplate())
 				|| (opts.defaultTemplate ? VersionTemplate.parse(opts.defaultTemplate) : null)

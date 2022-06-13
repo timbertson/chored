@@ -51,7 +51,7 @@ export async function render(files: Array<File>, options?: Options, fsOverride?:
 	// always write attributes file first, so that if anything fails we've
 	// at least recorded all files
 	await writeTo(fsUtil, attributesFile, true)
-	for (let file of files) {
+	for (const file of files) {
 		await writeTo(fsUtil, file, false)
 	}
 	console.warn(`Generated ${files.length + 1} files`)

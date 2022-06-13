@@ -57,7 +57,7 @@ type ArrayMerge = (a: Array<any>, b: Array<any>) => Array<any>
 const arrayMergeImpl : {union: ArrayMerge, concat: ArrayMerge, replace: ArrayMerge } = {
 	union: (a,b) => dedupe(a.concat(b)),
 	concat: (a,b) => a.concat(b),
-	replace: (a,b) => b,
+	replace: (_a,b) => b,
 }
 
 export function deepMergeWith(options: DeepMergeOptions) {

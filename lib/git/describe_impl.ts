@@ -60,8 +60,8 @@ export function parseDescribe(output: string): DescribedVersion {
 		return { commit: output, tag: null, isExact: false }
 	} else if (parts.length > 2) {
 		// output is e.g. v1.3.0-3-gf32721e
-		let tag = parts.slice(0, parts.length - 2).join('-')
-		let depth = parts[parts.length - 2]
+		const tag = parts.slice(0, parts.length - 2).join('-')
+		const depth = parts[parts.length - 2]
 		return {
 			commit: parts[parts.length - 1].slice(1),
 			tag: tag,

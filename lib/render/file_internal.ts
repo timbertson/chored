@@ -77,7 +77,7 @@ export abstract class DerivedFile {
 }
 
 export class TextFile extends BaseFile<string> implements File {
-	headerLinePrefix: string = "#"
+	headerLinePrefix = "#"
 	headerLineSuffix: string | null = null
 
 	serialize(): string {

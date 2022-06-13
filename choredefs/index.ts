@@ -1,3 +1,3 @@
-export function sample(opts: {}) {
+export function sample(_: {}) {
 	console.log('sample!')
 }

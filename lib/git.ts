@@ -105,7 +105,7 @@ export async function requireClean(opts?: RequireCleanOptions): Promise<void> {
 	}
 }
 
-export async function requireCleanIf(condition: boolean, opts?: RequireCleanOptions): Promise<void> {
+export function requireCleanIf(condition: boolean, opts?: RequireCleanOptions): Promise<void> {
 	return condition ? Promise.resolve() : requireClean(opts)
 }
 

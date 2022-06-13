@@ -1,7 +1,6 @@
 import { merge } from "../util/object.ts";
-import { trimIndent } from "../util/string.ts";
 import { defaultOptions, defaultSources, Bumper } from './bump.ts'
-import { BaseImport, ImportUtil, BumpSpec } from './source.ts'
+import { ImportUtil, BumpSpec } from './source.ts'
 import { computeLock } from "./lock.ts";
 import { DenoFS } from "../fs/impl.ts";
 import { encode as b64Url } from 'https://deno.land/std@0.143.0/encoding/base64url.ts'

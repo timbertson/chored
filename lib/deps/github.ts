@@ -1,7 +1,7 @@
 import { run } from "../cmd.ts";
 import { notNull } from "../util/object.ts";
 import { Version } from "../version.ts";
-import { BaseImport, BumpSpec, ImportSpec, ImportUtil, OverrideFn, Spec, Updater } from './source.ts'
+import { BaseImport, BumpSpec, ImportSpec, ImportUtil, OverrideFn, Spec } from './source.ts'
 
 export interface GithubImport extends BaseImport {
 	prefix: string,
@@ -50,7 +50,7 @@ export class GithubSpec implements Spec<GithubImport> {
 	}
 
 	async resolve(verbose: boolean): Promise<string|null> {
-		return this.resolveFrom(this.repoURL, verbose)
+		return await this.resolveFrom(this.repoURL, verbose)
 	}
 
 	async resolveFrom(repoURL: string, verbose: boolean): Promise<string|null> {
@@ -72,7 +72,7 @@ export class GithubSpec implements Spec<GithubImport> {
 	}
 
 	private async resolveLatestVersion(verbose: boolean): Promise<string|null> {
-		let refs: Array<Ref> = []
+		const refs: Array<Ref> = []
 		const refFilter = this.spec || 'v*'
 		const processLine = (line: string) => refs.push(this.parseRef(line))
 		const cmd = ['git', 'ls-remote']

@@ -105,7 +105,7 @@ export async function buildAll(spec: MinimalSpec, opts: TagStrategy & BuildOptio
 	}
 }
 
-export async function buildAllFromSpec(spec: Spec, opts: TagStrategy & BuildOptions) {
+export function buildAllFromSpec(spec: Spec, opts: TagStrategy & BuildOptions) {
 	return buildAll(spec, {
 		...opts,
 		dockerfile: { contents: render(spec) }

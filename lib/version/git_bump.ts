@@ -1,7 +1,6 @@
 import { Version, Index, namedIndexes, resolveIndex } from '../version.ts'
 import { filterNull, sortBy } from '../util/collection.ts'
 import { CmdRunner, describeWithAutoDeepen } from '../git/describe_impl.ts'
-import { notNull } from "../util/object.ts";
 
 interface CommonOptions {
 	defaultComponent?: Index
@@ -241,13 +240,13 @@ export class Engine {
 	}
 
 	async push(version: Version) {
-		let tag = version.tag()
+		const tag = version.tag()
 		console.log("Pushing: "+ tag)
 		await this.runner.run(['git', 'push', 'origin', 'tag', tag])
 	}
 
 	async applyVersion(action: Action, version: Version) {
-		let tag = version.tag()
+		const tag = version.tag()
 		if (action === 'print') {
 			console.log("Calculated tag: "+ tag)
 		} else {
@@ -268,7 +267,7 @@ export class Engine {
 
 export function parseCommitLines(commitLines: string): CommitDirective {
 	function parse(label: string): CommitDirective {
-		let withoutRelease = label.replace(/-release$/, "")
+		const withoutRelease = label.replace(/-release$/, "")
 		if (namedIndexes.includes(withoutRelease)) {
 			return {
 				component: withoutRelease as Index,
@@ -285,9 +284,9 @@ export function parseCommitLines(commitLines: string): CommitDirective {
 	if (commitLines.length == 0) {
 		return { release: false, component: null }
 	}
-	let tags = commitLines.match(/\[\S+\]/gm) || []
+	const tags = commitLines.match(/\[\S+\]/gm) || []
 	// console.log("tags: " + JSON.stringify(tags))
-	let labels = (tags
+	const labels = (tags
 		.map((tag) => tag.trim().replace(/\[|\]/g, ''))
 		.map(parse)
 	)

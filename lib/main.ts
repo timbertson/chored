@@ -25,40 +25,40 @@ function guessType(s: string): Code {
 }
 
 export function parseArgs(args: Array<string>): Options {
-	let shift = () => {
-		let ret = args.shift()
+	const shift = () => {
+		const ret = args.shift()
 		if (ret == null) {
 			throw new Error("too few arguments")
 		}
 		return ret
 	}
 	
-	let main = []
-	let opts: { [index: string]: Code } = {}
+	const main = []
+	const opts: { [index: string]: Code } = {}
 	let action: 'run' | 'list' | 'help' = 'run'
 	while(true) {
-		let arg = args.shift()
+		const arg = args.shift()
 		if (arg == null) {
 			break
 		}
 		if (arg == '--string' || arg == '-s') {
-			let key = shift()
+			const key = shift()
 			opts[key] = Code.value(shift())
 		} else if (arg == '--bool' || arg == '-b') {
-			let key = shift()
+			const key = shift()
 			const value = shift()
 			const bool = notNull(bools[value], `boolean(${value})`)
 			opts[key] = Code.value(bool)
 		} else if (arg == '--num' || arg == '-n') {
-			let key = shift()
+			const key = shift()
 			opts[key] = Code.value(parseInt(shift(), 10))
 		} else if (arg == '--json' || arg == '-j') {
 			for (const [k,v] of Object.entries(JSON.parse(shift()))) {
 				opts[k] = Code.value(v)
 			}
 		} else if (arg == '--env' || arg == '-e') {
-			let key = shift()
-			let envKey = shift()
+			const key = shift()
+			const envKey = shift()
 			opts[key] = Code.env(envKey)
 		} else if (arg == '--list' || arg == '-l') {
 			action = 'list'
@@ -69,7 +69,7 @@ export function parseArgs(args: Array<string>): Options {
 			opts['args'] = Code.value(args)
 			break
 		} else if (arg.startsWith('--')) {
-			let argBody = arg.substring(2)
+			const argBody = arg.substring(2)
 			// try terse parsing
 			if (argBody.indexOf('=') !== -1) {
 				const [key, value] = argBody.split('=', 2)

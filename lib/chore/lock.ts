@@ -1,5 +1,5 @@
 import { lock, lockPath } from '../deps/lock.ts'
-export default function lockChore(opts: {}): Promise<void> {
+export default function lockChore(_: {}): Promise<void> {
 	return lock()
 }
 

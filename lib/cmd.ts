@@ -32,7 +32,7 @@ type OutputConfiguration = {
 	action: OutputAction,
 }
 
-function noopAction(output: OutputDest, p: Deno.Process) {
+function noopAction(_dest: OutputDest, _proc: Deno.Process) {
 	return Promise.resolve()
 }
 
@@ -44,10 +44,11 @@ function readAction(stream: StdioStream): OutputAction {
 }
 
 function writeAction(contents: string): OutputAction {
-	return async function(_: OutputDest, p: Deno.Process) {
+	return function(_: OutputDest, p: Deno.Process) {
 		const stdin = notNull(p.stdin, 'process stdin')
 		stdin.write(new TextEncoder().encode(contents))
 		stdin.close()
+		return Promise.resolve()
 	}
 }
 
@@ -103,9 +104,9 @@ export async function run(cmd: Array<string>, opts?: RunOpts): Promise<RunResult
 	if (opts?.printCommand !== false) {
 		console.warn(' + ' + cmd.join(' '))
 	}
-	let stdin = parseStdio('stdin', opts?.stdin || null)
-	let stdout = parseStdio('stdout', opts?.stdout || null)
-	let stderr = parseStdio('stderr', opts?.stderr || null)
+	const stdin = parseStdio('stdin', opts?.stdin || null)
+	const stdout = parseStdio('stdout', opts?.stdout || null)
+	const stderr = parseStdio('stderr', opts?.stderr || null)
 
 	const runOpts: Deno.RunOptions = {
 		cmd: cmd,
@@ -145,7 +146,7 @@ export async function runTest(cmd: Array<string>, opts?: RunOpts): Promise<boole
 	return p.status.success
 }
 
-export async function runSilent(cmd: Array<string>, opts?: RunOpts): Promise<RunResult> {
+export function runSilent(cmd: Array<string>, opts?: RunOpts): Promise<RunResult> {
 	return run(cmd, {
 		...opts,
 		printCommand: false,

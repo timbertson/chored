@@ -90,7 +90,7 @@ export function stage(name: string, props: { from: ImageSource }): StageExt {
 }
 
 function renderStage(t: Stage) {
-	let fromLine = `FROM ${ImageExt.showSource(t.from)} as ${t.name}\n`
+	const fromLine = `FROM ${ImageExt.showSource(t.from)} as ${t.name}\n`
 	return fromLine + t.steps.map(s => s.rawStep).join('\n')
 }
 

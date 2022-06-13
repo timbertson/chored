@@ -89,7 +89,7 @@ export class FakeFS implements FS {
 		return Promise.resolve(contents)
 	}
 
-	writeTextFile(path: string, contents: string, options?: Deno.WriteFileOptions): Promise<void> {
+	writeTextFile(path: string, contents: string, _options?: Deno.WriteFileOptions): Promise<void> {
 		this.files[path] = contents
 		return Promise.resolve()
 	}
@@ -117,7 +117,7 @@ export class FakeFS implements FS {
 		return Promise.resolve()
 	}
 
-	chmod(path: string, mode: number): Promise<void> {
+	chmod(_path: string, _mode: number): Promise<void> {
 		return Promise.resolve()
 	}
 }

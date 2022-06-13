@@ -1,7 +1,7 @@
 import { merge } from '../util/object.ts'
 import { FS, DenoFS } from '../fs/impl.ts';
 import { walk } from '../walk.ts'
-import { AnyImportSpec, AnySource, BaseImport, BumpSpec, makeOverrideFn, OverrideFn, Updater } from './source.ts'
+import { AnyImportSpec, AnySource, BaseImport, BumpSpec, makeOverrideFn } from './source.ts'
 import { GithubSource } from './github.ts'
 import { DenoSource } from './deno.ts'
 
@@ -35,7 +35,7 @@ export class Bumper {
 	private sources: AnySource[]
 	cache: { [index: string]: Promise<string | null> } = {}
 	private changedSources: Set<string> = new Set()
-	private fetchCount: number = 0
+	private fetchCount = 0
 	
 	constructor(opts: { sources: Array<AnySource>, opts: BumperOptions, fs?: FS }) {
 		this.sources = opts.sources
@@ -62,7 +62,7 @@ export class Bumper {
 			let cached = this.cache[specId]
 			if (cached == null) {
 				cached = this.cache[specId] = (async () => {
-					const version = importSpec.spec.resolve(this.verbose)
+					const version = await importSpec.spec.resolve(this.verbose)
 					if (version != null && this.opts.verbose) {
 						console.log(`[version] ${version} ${specId}`)
 					}
@@ -127,7 +127,7 @@ export class Bumper {
 		// technique from https://stackoverflow.com/questions/52417975/using-promises-in-string-replace
 		const replacements: { [index: string]: string } = {}
 		const promises: Array<Promise<void>> = []
-		contents.replaceAll(importRe, (_match: string, prefix: string, url: string) => {
+		contents.replaceAll(importRe, (_match: string, _prefix: string, url: string) => {
 			promises.push(fn(url).then(replacement => {
 				if (replacement != null) {
 					replacements[url] = replacement
@@ -169,7 +169,7 @@ export async function walkRoots(roots: Array<string>, opts: BumpOptions, handle:
 		roots = ['.']
 	}
 
-	let exts = opts.exts ?? []
+	const exts = opts.exts ?? []
 	if (exts.length === 0) {
 		throw new Error("Empty array of `exts` passed to walk function")
 	}

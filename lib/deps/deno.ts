@@ -3,7 +3,7 @@
 import { assertEquals } from "https://deno.land/std@0.143.0/testing/asserts.ts"
 
 import { notNull } from "../util/object.ts";
-import { BumpSpec, ImportSpec, ImportUtil, OverrideFn, Spec, Updater } from "./source.ts";
+import { BumpSpec, ImportSpec, ImportUtil, OverrideFn, Spec } from "./source.ts";
 
 function u(s :string) {
 	return encodeURIComponent(s)
@@ -74,7 +74,7 @@ export class DenoSpec implements Spec<DenoImport> {
 		this.spec = spec.spec
 	}
 
-	async resolve(verbose: boolean): Promise<string|null> {
+	async resolve(_verbose: boolean): Promise<string|null> {
 		const meta = await listVersions(this.name)
 		const spec = this.spec
 		if (spec === null) {

@@ -29,7 +29,7 @@ const denoUrl = (v: string | null, p?: { spec?: string, name?: string, path?: st
 }
 
 function parseDeno(s: string, overrides: BumpSpec[] = []): { spec: DenoSpec, import: DenoImport } {
-	let p = DenoSource.parse(s, makeOverrideFn<DenoImport>(overrides))
+	const p = DenoSource.parse(s, makeOverrideFn<DenoImport>(overrides))
 	if (p == null) {
 		throw new Error(`Can't parse Deno: ${s}`)
 	} else {
@@ -221,7 +221,7 @@ Deno.test('bump walk', () => withTempDir({}, async (dir) => {
 					show(imp: TestImport) {
 						return `${imp.prefix}/${imp.version}/${imp.path}`
 					},
-					async resolve(verbose: boolean) {
+					async resolve(_verbose: boolean) {
 						return version  +'-new'
 					}
 				}

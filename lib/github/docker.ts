@@ -22,7 +22,7 @@ function primaryTag(Env: GithubEnv): string {
 }
 
 export async function _buildOptions(Env: GithubEnv, build: Options = {}): Promise<TagStrategy & BuildOptions> {
-	let secondaryTags: string[] = []
+	const secondaryTags: string[] = []
 
 	// In github, we cache from:
 	// - the main branch

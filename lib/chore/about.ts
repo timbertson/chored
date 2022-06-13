@@ -1,11 +1,11 @@
-import { replaceSuffix, trimIndent } from '../util/string.ts'
+import { replaceSuffix } from '../util/string.ts'
 import { notNull } from '../util/object.ts'
 import { listVersions } from '../deps/deno.ts'
 import { GithubSpec, GithubImport } from '../deps/github.ts'
 
 const root = replaceSuffix(import.meta.url, 'lib/chore/about.ts', '')
 
-export default async function(opts: {}) {
+export default async function(_: {}) {
 	console.log(`\n\nchored running from: ${root}`)
 	const versions = await listVersions('chored')
 	console.log(`\nThe latest release is:\n  https://deno.land/x/chored@${versions.latest}/lib/`)

@@ -7,7 +7,7 @@ export * as deps from './deps.ts'
 export { default as render } from './render.ts'
 export { default as about } from './about.ts'
 
-export function localImportMap(opts: {}) {
+export function localImportMap(_: {}) {
 	const url = replaceSuffix(import.meta.url, 'builtins.ts', 'localImportMap.ts')
 	console.warn(trimIndent(`
 	ERROR: To use the --local flag, you must implement your own

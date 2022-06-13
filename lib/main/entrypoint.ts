@@ -1,6 +1,6 @@
 import withTempFile from '../fs/with_temp_file.ts'
 import { notNull } from '../util/object.ts'
-import { partition, equalArrays, sort, sortByCmp } from '../util/collection.ts'
+import { partition, equalArrays, sortByCmp } from '../util/collection.ts'
 import { Config } from './config.ts'
 import { replaceSuffix, trimIndent } from '../util/string.ts'
 
@@ -85,8 +85,8 @@ function isPromise(obj: any) {
 }
 
 export async function runResolved(entrypoint: Entrypoint, opts: RunOpts): Promise<any> {
-	let indent = "\t\t\t\t"
-	let optsCode = `{\n${indent}` + Object.entries(opts).map(([k,v]) => `${k}: ${v.tsLiteral}`).join(`,\n${indent}`) + `\n${indent}}`
+	const indent = "\t\t\t\t"
+	const optsCode = `{\n${indent}` + Object.entries(opts).map(([k,v]) => `${k}: ${v.tsLiteral}`).join(`,\n${indent}`) + `\n${indent}}`
 
 	const tsLiteral = `
 		import * as mod from ${JSON.stringify(entrypoint.module)}
@@ -117,7 +117,7 @@ async function listFilesIn(path: string): Promise<string[]> {
 		if (entry.isSymlink) {
 			try {
 				return (await Deno.stat(`${path}/${entry.name}`)).isFile
-			} catch (e) {
+			} catch (_) {
 				// ignore
 			}
 		}
@@ -157,7 +157,7 @@ export class Resolver {
 	}
 
 	async run(main: Array<string>, opts: RunOpts): Promise<any> {
-		let entrypoint = await this.resolveEntrypoint(main)
+		const entrypoint = await this.resolveEntrypoint(main)
 		return runResolved(nonNullEntrypoint(main, entrypoint), opts)
 	}
 	

@@ -20,7 +20,7 @@ export function sortByCmp<T, K>(items: T[], cmp: (a:K, b:K) => number, key: (t: 
 }
 
 export function dedupeSort<T>(items: T[], cmp?: (a: T, b: T) => number): T[] {
-	return sort(dedupe(items))
+	return sort(dedupe(items), cmp)
 }
 
 export function partition<T>(items: T[], fn: (t: T) => Boolean): [T[], T[]] {

@@ -6,7 +6,6 @@ import { partition } from '../util/collection.ts'
 import { Resolver } from '../main/entrypoint.ts'
 import { defaultConfig } from '../main/config.ts'
 import { trimIndent } from "../util/string.ts";
-import * as ImportMap from '../deps/import_map.ts'
 
 export type Options = BumpOptions & {
 	args?: Array<string>

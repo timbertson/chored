@@ -24,7 +24,7 @@ export class Version {
 	}
 
 	static parsePart(p: string) {
-		let digits = p.match(/^[0-9]+$/)
+		const digits = p.match(/^[0-9]+$/)
 		if (digits == null) {
 			throw new Error("Invalid version component: " + p)
 		}

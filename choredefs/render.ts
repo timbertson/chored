@@ -1,10 +1,10 @@
-import { render, JSONFile, YAMLFile, RawFile, ExecutableFile } from '../lib/render.ts'
+import { render, JSONFile, YAMLFile, ExecutableFile } from '../lib/render.ts'
 import { wrapperScript, bootstrapText } from '../lib/render/bootstrap.ts'
 import { workflow as ci } from './lib/ci.ts'
 import { file as Dockerfile } from './docker.ts'
 
-export default async function(opts: { verbose?: boolean }): Promise<void> {
-	return render([
+export default async function(_: {}): Promise<void> {
+	await render([
 		new JSONFile("example/generated.json", { generated: true }),
 		new YAMLFile("example/generated.yaml", { generated: true }),
 		new ExecutableFile("install.sh", bootstrapText()),

@@ -1,6 +1,6 @@
 import { merge } from "./util/object.ts"
 
-const trace = Deno.env.get('TRACE_GRAPHQL') == '1' ? (...args: any) => console.log(...args) : (...args: any) => { return }
+const trace = Deno.env.get('TRACE_GRAPHQL') == '1' ? (...args: any) => console.log(...args) : (..._args: any) => { return }
 
 export interface Query<Params, Result> {
 	queryText: string,

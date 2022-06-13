@@ -1,0 +1,10 @@
+{
+"lint": {
+	"files": {
+		"exclude": ["schemas", "test"]
+	},
+	"rules": {
+		"exclude": ["no-explicit-any", "ban-types", "no-inferrable-types"]
+	}
+},
+}
