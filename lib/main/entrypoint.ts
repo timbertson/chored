@@ -267,7 +267,10 @@ export class Resolver {
 			console.log(trimIndent(`
 				Usage: ./chored [MODULE] CHORE [OPTIONS]
 				
-				Options will be passed as a single argument to the given function:
+				  --list/-l: list chores
+				  --help/-h: print help
+				
+				To pass options to a chore:
 				  --string key value / -s key value / --key=value
 				  --bool flag true / --flag / --no-flag
 				  --num key int / -n key int / -n=int
