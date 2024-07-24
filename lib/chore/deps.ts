@@ -48,6 +48,7 @@ export function Make(extraDefaults: Options) {
 		})
 	}
 }
+Make.isChoredef = false
 
 const base = Make({})
 export const bump = base.bump
