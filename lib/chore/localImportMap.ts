@@ -1,6 +1,9 @@
 import { KV, Options, importMap, importMapObject } from '../deps/import_map.ts'
 import { trimIndent } from '../util/string.ts'
 
+export type { Options }
+export { importMap }
+
 export function Make(sources: KV) {
 	async function dfl(opts: Options) {
 		await importMap(opts, sources)
