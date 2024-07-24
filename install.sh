@@ -12,13 +12,23 @@ _main() {
 
 		PLATFORM_ARCH=""
 		# Add more as needed
-		case "$(uname -sm)" in
+		UNAME="$(uname -sm)"
+		case "$UNAME" in
 			"Darwin x86_64")
 				PLATFORM_ARCH="x86_64-apple-darwin"
 				;;
 
 			"Linux x86_64")
 				PLATFORM_ARCH="x86_64-unknown-linux-gnu"
+				;;
+
+			"Darwin arm64")
+				PLATFORM_ARCH="aarch64-apple-darwin"
+				;;
+
+			*)
+				echo >&2 "Error: Unknown platform/arch: $UNAME"
+				exit 1
 				;;
 		esac
 		[ -n "$PLATFORM_ARCH" ]
