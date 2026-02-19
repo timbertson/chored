@@ -6,6 +6,7 @@ export interface CreateOrUpdatePROptions extends FindPRParams {
 	body: string,
 	title: string,
 	baseBranch: string,
+	draft?: boolean,
 }
 
 export class GithubClient extends GQClient {
@@ -134,6 +135,7 @@ export const createPullRequest: Query<CreatePRParams, PullRequestIdentity> = {
 		$baseBranch: String!,
 		$body: String!,
 		$title: String!,
+		$draft: Boolean,
 		$repositoryId: ID!
 	) {
 		createPullRequest(input: {
@@ -141,7 +143,8 @@ export const createPullRequest: Query<CreatePRParams, PullRequestIdentity> = {
 			headRefName: $branchName,
 			baseRefName: $baseBranch,
 			title: $title,
-			body: $body
+			body: $body,
+			draft: $draft
 		}) {
 			pullRequest {
 				id
