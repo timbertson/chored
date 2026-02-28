@@ -86,7 +86,7 @@ function isPromise(obj: any) {
 
 export async function runResolved(entrypoint: Entrypoint, opts: RunOpts): Promise<any> {
 	const indent = "\t\t\t\t"
-	const optsCode = `{\n${indent}` + Object.entries(opts).map(([k,v]) => `${k}: ${v.tsLiteral}`).join(`,\n${indent}`) + `\n${indent}}`
+	const optsCode = `{\n${indent}` + Object.entries(opts).map(([k,v]) => `${JSON.stringify(k)}: ${v.tsLiteral}`).join(`,\n${indent}`) + `\n${indent}}`
 
 	const tsLiteral = `
 		import * as mod from ${JSON.stringify(entrypoint.module)}
