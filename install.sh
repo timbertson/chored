@@ -8,7 +8,7 @@ _main() {
 	fi
 	if [ -z "${DENO:-}" ]; then
 		CHORED_CACHE="${CHORED_CACHE:-$HOME/.cache/chored}"
-		DENO_VERSION="${DENO_VERSION:-1.22.0}"
+		DENO_VERSION="${DENO_VERSION:-2.7.1}"
 
 		PLATFORM_ARCH=""
 		# Add more as needed
@@ -43,7 +43,7 @@ _main() {
 		fi
 	fi
 
-	DENO_ARGV=(--unstable --allow-all --check=local)
+	DENO_ARGV=(--allow-all --check=local)
 
 	REPO="https://github.com/timbertson/chored.git"
 	VERSION="$(git ls-remote --refs --tags --sort=-v:refname "$REPO" 'refs/tags/v*' | head -n 1 | sed -e 's@.*/@@')"
