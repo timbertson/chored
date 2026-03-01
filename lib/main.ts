@@ -1,5 +1,6 @@
 import { gray, red } from './fmt/colors.ts'
 import { notNull } from './util/object.ts'
+import { toError } from './util/error.ts'
 import { Config, defaultConfig } from './main/config.ts'
 
 import { Resolver, Code } from './main/entrypoint.ts'
@@ -107,10 +108,11 @@ export async function main(config: Config, args: Array<string>): Promise<void> {
 		try {
 			await resolver.run(main, opts)
 		} catch (e) {
-			const dump = (e instanceof Error ? e.stack : null) ?? String(e)
-			const msgPos = dump.indexOf(e.message)
-			if (Deno.isatty(Deno.stderr.rid) && msgPos > -1) {
-				const splitIdx = msgPos + e.message.length
+			const error = toError(e)
+			const dump = error.stack || error.message
+			const msgPos = dump.indexOf(error.message)
+			if (Deno.stderr.isTerminal() && msgPos > -1) {
+				const splitIdx = msgPos + error.message.length
 				Deno.stderr.writeSync(new TextEncoder().encode(red(dump.substring(0, splitIdx))))
 				console.error(gray(dump.substring(splitIdx)))
 			} else {

@@ -3,6 +3,7 @@ import * as Git from './git.ts'
 import * as GH from "./github/api.ts";
 import * as Env from "./github/run_env.ts";
 import { notNull } from './util/object.ts'
+import { toError } from './util/error.ts'
 
 export interface Handler {
 	wrap: (fn: () => Promise<void>) => Promise<void>,
@@ -134,7 +135,7 @@ export function _makePullRequestHandler(impl: {
 				try {
 					await fn()
 				} catch(e) {
-					const error: Error = (e instanceof Error) ? e : new Error(e)
+					const error = toError(e);
 					if (!impl.silenceErrors) {
 						console.error(`Error occurred while applying update`, error.stack)
 					}

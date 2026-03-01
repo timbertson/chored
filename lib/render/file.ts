@@ -32,7 +32,7 @@ export class RawFile extends BaseFile<string> implements File {
 }
 
 export class CFile extends TextFile {
-	headerLinePrefix: string = "//"
+	override headerLinePrefix: string = "//"
 }
 
 export class ExecutableFile extends TextFile {
@@ -40,8 +40,8 @@ export class ExecutableFile extends TextFile {
 }
 
 export class HTMLFile extends TextFile {
-	headerLinePrefix: string = "<!--"
-	headerLineSuffix: string = "-->"
+	override headerLinePrefix: string = "<!--"
+	override headerLineSuffix: string = "-->"
 }
 
 export const MarkdownFile = HTMLFile

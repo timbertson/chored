@@ -8,7 +8,7 @@ export function notNull<T>(v: T|undefined|null, desc?: string): T {
 	return v
 }
 
-export function merge<T>(a: T, ...rest: Partial<T>[]): T {
+export function merge<T extends object>(a: T, ...rest: Partial<T>[]): T {
 	const ret: T = {...a}
 	for (const addition of rest) {
 		Object.assign(ret, addition)

@@ -125,7 +125,7 @@ async function listFilesIn(path: string): Promise<string[]> {
 	}
 
 	for await (const entry of Deno.readDir(path)) {
-		if (entry.isFile || isFileLink(entry)) {
+		if (entry.isFile || await isFileLink(entry)) {
 			rv.push(entry.name)
 		}
 	}

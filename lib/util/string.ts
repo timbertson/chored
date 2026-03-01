@@ -10,7 +10,7 @@ export function joinLines(lines: string[]): string {
 }
 
 export function trimIndent(str: string): string {
-	const lines = str.split('\n')
+	let lines = str.split('\n')
 	
 	// collect commonIndent of all non-blank lines
 	let commonIndent = null
@@ -38,5 +38,8 @@ export function trimIndent(str: string): string {
 	if (lines[0] === '') {
 		lines.splice(0, 1)
 	}
-	return joinLines(lines.map(line => line.substring(commonIndent.length)))
+	if (commonIndent !== null) {
+		lines = lines.map(line => line.substring(commonIndent.length))
+	}
+	return joinLines(lines)
 }

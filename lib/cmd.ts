@@ -1,12 +1,18 @@
-import { readLines } from "https://deno.land/std@0.143.0/io/buffer.ts"
+import { TextLineStream } from "jsr:@std/streams@0.223.0/text-line-stream";
 
 import { notNull } from './util/object.ts'
+
+function readLines(stream: ReadableStream<Uint8Array<ArrayBuffer>>): ReadableStream<string> {
+	return stream
+		.pipeThrough(new TextDecoderStream())
+		.pipeThrough(new TextLineStream())
+}
 
 export type Stdio = 'inherit' | 'discard' | 'string' | 'printOnError' | ((line: string) => void)
 export type Stdin = 'inherit' | 'discard' | { contents: string }
 
 export interface RunResult {
-	status: Deno.ProcessStatus,
+	status: Deno.CommandStatus,
 	output: string|null,
 	errOutput: string|null,
 }
@@ -22,52 +28,52 @@ export interface RunOpts {
 	env?: { [index: string]: string },
 }
 
-type DenoStdio = "inherit" | "piped" | "null" | number
+type DenoStdio = "inherit" | "piped" | "null"
 type OutputDest = { output: string|null }
 type StdioStream = "stdout" | "stderr"
-type OutputAction = (output: OutputDest, p: Deno.Process) => Promise<void>
+type OutputAction = (output: OutputDest, p: Deno.ChildProcess) => Promise<void>
 
 type OutputConfiguration = {
 	runOpt: DenoStdio,
 	action: OutputAction,
 }
 
-function noopAction(_dest: OutputDest, _proc: Deno.Process) {
+function noopAction(_dest: OutputDest, _proc: Deno.ChildProcess) {
 	return Promise.resolve()
 }
 
 function readAction(stream: StdioStream): OutputAction {
-	return async function(output: OutputDest, p: Deno.Process) {
-		const bytes = stream === 'stderr' ? p.stderrOutput() : p.output()
-		output.output = new TextDecoder().decode(await bytes).replace(/\n$/, '')
+	return async function(output: OutputDest, p: Deno.ChildProcess) {
+		const string = await (stream === 'stderr' ? p.stderr : p.stdout).text()
+		output.output = string.replace(/\n$/, '')
 	}
 }
 
 function writeAction(contents: string): OutputAction {
-	return function(_: OutputDest, p: Deno.Process) {
+	return function(_: OutputDest, p: Deno.ChildProcess) {
 		const stdin = notNull(p.stdin, 'process stdin')
-		stdin.write(new TextEncoder().encode(contents))
-		stdin.close()
+		const writer = stdin.getWriter()
+		writer.write(new TextEncoder().encode(contents))
+		writer.close()
 		return Promise.resolve()
 	}
 }
 
 function printOnErrorAction(stream: StdioStream): OutputAction {
-	return async function(output: OutputDest, p: Deno.Process) {
+	return async function(output: OutputDest, p: Deno.ChildProcess) {
 		await readAction(stream)(output, p)
-		if (!await (await p.status()).success) {
+		if (!await (await p.status).success) {
 			console.warn(output.output)
 		}
 	}
 }
 
 function pipeAction(stream: StdioStream, fn: (line: string) => void): OutputAction {
-	return async function(_: OutputDest, p: Deno.Process) {
+	return async function(_: OutputDest, p: Deno.ChildProcess) {
 		const s = notNull(p[stream])
 		for await (const line of readLines(s)) {
 			fn(line)
 		}
-		s.close()
 	}
 }
 
@@ -108,8 +114,9 @@ export async function run(cmd: Array<string>, opts?: RunOpts): Promise<RunResult
 	const stdout = parseStdio('stdout', opts?.stdout || null)
 	const stderr = parseStdio('stderr', opts?.stderr || null)
 
-	const runOpts: Deno.RunOptions = {
-		cmd: cmd,
+	const execPath = notNull(cmd[0]);
+	const runOpts: Deno.CommandOptions = {
+		args: cmd.slice(1),
 		stdin: stdin.runOpt,
 		stdout: stdout.runOpt,
 		stderr: stderr.runOpt,
@@ -117,7 +124,7 @@ export async function run(cmd: Array<string>, opts?: RunOpts): Promise<RunResult
 		env: opts?.env,
 	}
 
-	const p = Deno.run(runOpts)
+	const p = new Deno.Command(execPath, runOpts).spawn()
 	const stdoutBuf: OutputDest = { output: null }
 	const stderrBuf: OutputDest = { output: null }
 	await Promise.all([
@@ -125,8 +132,7 @@ export async function run(cmd: Array<string>, opts?: RunOpts): Promise<RunResult
 		stdout.action(stdoutBuf, p),
 		stderr.action(stderrBuf, p),
 	])
-	const status = await p.status()
-	p.close()
+	const status = await p.status
 
 	if (!opts?.allowFailure && !status.success) {
 		if (opts?.fatal === true) {
