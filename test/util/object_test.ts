@@ -2,6 +2,7 @@ import withTempFile from "../../lib/fs/with_temp_file.ts";
 import { deepMerge, deepMergeWith } from "../../lib/util/object.ts";
 import { replaceSuffix, trimIndent } from "../../lib/util/string.ts";
 import { assertEquals } from '../common.ts'
+import { importWithTypeChecking } from '../../lib/typecheck.ts'
 
 interface Attributes {
 	foo: string,
@@ -83,7 +84,7 @@ Deno.test('deepMerge', () => {
 			await Deno.writeTextFile(p, fullCode)
 			let error: Error | null = null
 			try {
-				await import(`file://${p}`)
+				await importWithTypeChecking(`file://${p}`)
 			} catch (e) {
 				error = e as Error
 			}

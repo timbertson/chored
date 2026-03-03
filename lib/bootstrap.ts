@@ -1,5 +1,6 @@
 // invoked directly by bootstrap script
 import { DenoFS } from './fs/impl.ts'
+import { importWithTypeChecking } from './typecheck.ts'
 
 const renderModule = import.meta.url.replace(/bootstrap.ts$/, 'render.ts')
 
@@ -27,7 +28,7 @@ export async function install() {
 	
 	await writeIfMissing(renderPath, renderTask)
 
-	const render = await import(`file://${Deno.cwd()}/${renderPath}`)
+	const render = await importWithTypeChecking(`file://${Deno.cwd()}/${renderPath}`)
 	console.log("Running render task ...")
 	await render.default({})
 }

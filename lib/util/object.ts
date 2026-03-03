@@ -21,7 +21,7 @@ export function tap<T>(obj: T, fn: (obj: T) => any): T {
 	return obj
 }
 
-// source: https://github.com/joonhocho/tsdef/blob/master/src/index.ts
+// based on: https://github.com/joonhocho/tsdef/blob/master/src/index.ts
 export type DeepPartial<T> =
 	// map types without expliit keys should NOT be partialized, beause we can't guarantee that the LHS has the same keys
 	string extends keyof T ? T : {

@@ -39,7 +39,7 @@ Deno.test('git untracked detection', () => Context.run(async (ctx: Context) => {
 }))
 
 Deno.test('git branch name', () => Context.run(async (ctx: Context) => {
-	assertEquals(await git.branchName(ctx.gitOpts), 'master')
+	assertEquals(await git.branchName(ctx.gitOpts), 'main')
 	await run(['git', 'switch', '--detach', 'HEAD'], ctx.runOpts)
 	assertEquals(await git.branchName(ctx.gitOpts), null)
 }))

@@ -1,6 +1,6 @@
 import { Config, defaultConfig } from '../main/config.ts'
 import { run } from '../cmd.ts'
-import withTempFile from '../fs/with_temp_file.ts'
+import withTempDir from '../fs/with_temp_dir.ts'
 import { replaceSuffix } from '../util/string.ts'
 
 export const lockPath = (config: Config = defaultConfig) => `${config.taskRoot}/lock.json`
@@ -14,7 +14,7 @@ async function lockModules(paths: Array<string>, config: Config = defaultConfig,
 	}
 	const activeLockPath = lockPathOverride || defaultLockPath
 	await run(
-		[ config.denoExe, "cache", "--lock", activeLockPath, "--lock-write", mainModule, ...paths ],
+		[ config.denoExe, "cache", "--lock", activeLockPath, mainModule, ...paths ],
 		{ printCommand: lockPathOverride == null })
 }
 
@@ -31,11 +31,13 @@ export async function lock(config: Config = defaultConfig) {
 }
 
 export interface Lock {
-	[index: string]: string
+	remote?: Record<string, string>,
+	jsr?: Record<string, string>,
 }
 
 export function computeLock(config: Config = defaultConfig): Promise<Lock> {
-	return withTempFile({ prefix: 'lock-', suffix: '.json' }, async (path: string) => {
+	return withTempDir({ prefix: 'deno-lock' }, async (dirPath: string) => {
+		const path = `${dirPath}/lock.json`
 		await lockModules(await choredefModules(config), config, path)
 		const jsonStr = await Deno.readTextFile(path)
 		return JSON.parse(jsonStr) as Lock

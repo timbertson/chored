@@ -39,7 +39,7 @@ export async function importMapObject(opts: Options, sources: KV): Promise<KV> {
 		console.warn(`after filtering, there are ${filteredSources.length} sources`)
 	}
 
-	for (const url of Object.keys(lock)) {
+	for (const url of Object.keys(lock.remote || {})) {
 		const importSpec = bumper.parse(url)
 		if (importSpec == null) {
 			continue

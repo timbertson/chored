@@ -3,6 +3,7 @@ import { notNull } from '../util/object.ts'
 import { partition, equalArrays, sortByCmp } from '../util/collection.ts'
 import { Config } from './config.ts'
 import { replaceSuffix, trimIndent } from '../util/string.ts'
+import { importWithTypeChecking } from '../typecheck.ts'
 
 export interface Code {
 	tsLiteral: string
@@ -97,7 +98,7 @@ export async function runResolved(entrypoint: Entrypoint, opts: RunOpts): Promis
 	const compiled = await withTempFile({ prefix: "chored_", suffix: ".ts" }, async (tempFile: string) => {
 		// console.log(tsLiteral)
 		await Deno.writeTextFile(tempFile, tsLiteral)
-		return await import('file://' + tempFile)
+		return await importWithTypeChecking('file://' + tempFile)
 	})
 	const result = compiled.default()
 	return isPromise(result) ? await result : result

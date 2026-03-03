@@ -24,7 +24,7 @@ export class Context {
 	async init() {
 		await this.write("a", "a initial")
 		await this.write("b", "b initial")
-		await run(['git', 'init'], this.runOpts)
+		await run(['git', 'init', '-b', 'main'], this.runOpts)
 		await run(['git', 'add', '.'], this.runOpts)
 		await run(['git', 'config', 'user.name', 'nobody'], this.runOpts)
 		await run(['git', 'config', 'user.email', 'nobody@localhost'], this.runOpts)
