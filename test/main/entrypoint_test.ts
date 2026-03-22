@@ -1,4 +1,4 @@
-import { assertEquals, assertMatch } from '../common.ts'
+import { assertEquals } from '../common.ts'
 import { DenoFS } from '../../lib/fs/impl.ts'
 import withTempDir from '../../lib/fs/with_temp_dir.ts'
 import { Resolver } from '../../lib/main/entrypoint.ts'
@@ -11,7 +11,7 @@ interface MinimalEntrypoint {
 }
 
 async function resolveEntrypoint(c: Config, main: string[]): Promise<MinimalEntrypoint|null> {
-	let resolved = await (new Resolver(c)).resolveEntrypoint(main)
+	const resolved = await (new Resolver(c)).resolveEntrypoint(main)
 	return (resolved == null) ? resolved : {
 		module: resolved.module,
 		symbol: resolved.symbol,
@@ -125,7 +125,7 @@ Deno.test("list / run entrypoints", (t) => withTempDir({}, async (dir) => {
 }))
 
 
-Deno.test("default.ts", (t) => withTempDir({}, async (dir) => {
+Deno.test("default.ts", (_t) => withTempDir({}, async (dir) => {
 	await DenoFS.writeTextFile(`${dir}/default.ts`, `
 		export default function(opts: {}) { return "default!" }
 	`)

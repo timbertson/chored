@@ -22,7 +22,7 @@ export class Ctx {
 			}
 			return r
 		}
-		const runner = this.runner = {
+		this.runner = {
 			run: async (cmd: string[]) => {
 				const success = self.consumeBool(cmd, true)
 				if (!success) {

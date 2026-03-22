@@ -1,1 +1,1 @@
-export * from 'https://deno.land/std@0.143.0/fs/walk.ts'
+export * from 'jsr:@std/fs@1.0.23/walk.ts'

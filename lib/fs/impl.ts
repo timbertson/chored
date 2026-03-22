@@ -1,4 +1,4 @@
-import { dirname } from "https://deno.land/std@0.143.0/path/mod.ts"
+import { dirname } from "jsr:@std/path@1.1.4/mod"
 
 export interface FS {
 	// subset of Deno interface

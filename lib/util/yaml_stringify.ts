@@ -1,1 +1,1 @@
-export { stringify } from "https://deno.land/std@0.143.0/encoding/yaml.ts";
+export { stringify } from "jsr:@std/encoding@1.0.10/yaml.ts";

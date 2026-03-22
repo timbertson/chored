@@ -14,7 +14,7 @@ import { Version } from "../../lib/version.ts";
 
 Deno.test('VersionTemplate', () => {
 	function t(s: string) {
-		return VersionTemplate.parse('1.2.3').parts
+		return VersionTemplate.parse(s).parts
 	}
 	assertEquals(t('1.2.3'), [1,2,3])
 	assertEquals(t('1.x.3'), [1,2,3])

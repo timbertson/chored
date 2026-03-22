@@ -78,19 +78,17 @@ class GithubStub {
 	}
 
 	makePullRequest() {
-		const self = this
 		return _makePullRequestHandler({
 			silenceErrors: true,
 			commitAll: (opts: Git.CommitAllOptions) => {
-				self.commits.push(opts)
+				this.commits.push(opts)
 				return Promise.resolve()
 			},
 			makeClient: (token: string) => {
 				const client = GH.Client(token)
-				const self = this
 				;(client as any).execute = (..._: any[]) => Promise.resolve(null)
 				client.createOrUpdatePullRequest = (opts: GH.CreateOrUpdatePROptions) => {
-					self.pullRequests.push(opts)
+					this.pullRequests.push(opts)
 					return Promise.resolve({} as GH.PullRequestIdentity)
 				}
 				return client

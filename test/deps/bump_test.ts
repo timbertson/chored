@@ -4,7 +4,7 @@ import { DenoFS, FakeFS } from '../../lib/fs/impl.ts'
 import { run } from '../../lib/cmd.ts'
 
 import { Bumper } from '../../lib/deps/bump.ts'
-import { BaseImport, BumpSpec, ImportUtil, makeOverrideFn, OverrideFn, Source, TestImport } from '../../lib/deps/source.ts'
+import { BumpSpec, ImportUtil, makeOverrideFn, OverrideFn, Source, TestImport } from '../../lib/deps/source.ts'
 import { GithubSource, GithubSpec, GithubImport } from '../../lib/deps/github.ts'
 import { DenoSource, DenoSpec, DenoImport } from '../../lib/deps/deno.ts'
 import withTempDir from "../../lib/fs/with_temp_dir.ts";
@@ -15,7 +15,7 @@ const url = (r: string, p?: { spec?: string, repo?: string, path?: string }) => 
 }
 
 function parseGH(s: string, overrides: BumpSpec[] = []): { spec: GithubSpec, import: GithubImport } {
-	let p = GithubSource.parse(s, makeOverrideFn<GithubImport>(overrides))
+	const p = GithubSource.parse(s, makeOverrideFn<GithubImport>(overrides))
 	if (p == null) {
 		throw new Error(`Can't parse GH: ${s}`)
 	} else {
@@ -217,7 +217,7 @@ Deno.test('bump walk', () => withTempDir({}, async (dir) => {
 				import: { prefix, version, path, spec: null },
 				spec: {
 					identity: url,
-					matchesSpec(spec: BumpSpec) { return false },
+					matchesSpec(_spec: BumpSpec) { return false },
 					show(imp: TestImport) {
 						return `${imp.prefix}/${imp.version}/${imp.path}`
 					},
